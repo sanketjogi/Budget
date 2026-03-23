@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="BudgetFlow — A beautiful, Apple-inspired budget tracker to manage your finances with style.">
+    <meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)">
+    <meta name="theme-color" content="#f5f5f7" media="(prefers-color-scheme: light)">
+    <title>BudgetFlow — Track Your Finances</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" defer></script>
+</head>
+<body>
+    <!-- Animated ambient background -->
+    <div class="ambient-bg" aria-hidden="true">
+        <div class="ambient-blob blob-1"></div>
+        <div class="ambient-blob blob-2"></div>
+        <div class="ambient-blob blob-3"></div>
+    </div>
+    <!-- ======================== LOGIN OVERLAY ======================== -->
+    <div class="login-overlay" id="login-overlay">
+        <div class="login-card glass-panel">
+            <span class="login-logo">◉</span>
+            <h1 class="login-title">BudgetFlow</h1>
+            <p class="login-subtitle">Sign in to sync your finances across all your devices</p>
+            <button class="btn-google" id="google-signin-btn">
+                <svg width="20" height="20" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+                Sign in with Google
+            </button>
+            <button class="btn-skip" id="skip-signin-btn">Continue without signing in</button>
+            <p class="login-hint">Without sign-in, data stays on this device only</p>
+        </div>
+    </div>
+
+    <div class="app-container" id="app-container">
+        <!-- ======================== SIDEBAR ======================== -->
+        <aside class="sidebar glass-panel" id="sidebar">
+            <div class="sidebar-header">
+                <div class="app-logo">
+                    <span class="logo-icon">◉</span>
+                    <span class="logo-text">BudgetFlow</span>
+                </div>
+            </div>
+            <nav class="sidebar-nav">
+                <button class="nav-item active" data-view="dashboard" id="nav-dashboard">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                    <span>Dashboard</span>
+                </button>
+                <button class="nav-item" data-view="transactions" id="nav-transactions">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                    <span>Transactions</span>
+                </button>
+                <button class="nav-item" data-view="analytics" id="nav-analytics">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                    <span>Analytics</span>
+                </button>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="user-section" id="user-section" style="display:none">
+                    <div class="user-info-row">
+                        <img class="user-avatar" id="user-avatar" src="" alt="">
+                        <div class="user-details">
+                            <span class="user-name" id="user-name"></span>
+                            <span class="sync-badge">☁️ Synced</span>
+                        </div>
+                    </div>
+                    <button class="btn-signout" id="signout-btn">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                        Sign Out
+                    </button>
+                </div>
+                <div class="guest-section" id="guest-section">
+                    <button class="btn-signin-small" id="signin-small-btn">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+                        Sign in to sync
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- ======================== MAIN CONTENT ======================== -->
+        <main class="main-content">
+            <!-- Top Bar -->
+            <header class="topbar">
+                <button class="menu-toggle" id="menu-toggle" aria-label="Toggle menu">
+                    <span></span><span></span><span></span>
+                </button>
+                <div class="topbar-left">
+                    <h1 class="page-title" id="page-title">Dashboard</h1>
+                    <p class="page-subtitle" id="page-subtitle">Here's your financial overview</p>
+                </div>
+                <div class="topbar-right">
+                    <button class="btn btn-primary" id="add-transaction-btn">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        <span>Add Transaction</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- ============== DASHBOARD VIEW ============== -->
+            <section class="view active" id="dashboard-view">
+                <div class="stats-grid">
+                    <div class="stat-card glass-card" id="balance-card">
+                        <div class="stat-icon balance-icon">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 10h20"/></svg>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-label">Total Balance</span>
+                            <span class="stat-value" id="total-balance">₹0</span>
+                        </div>
+                    </div>
+                    <div class="stat-card glass-card" id="income-card">
+                        <div class="stat-icon income-icon">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-label">Monthly Income</span>
+                            <span class="stat-value income-text" id="monthly-income">₹0</span>
+                        </div>
+                    </div>
+                    <div class="stat-card glass-card" id="expense-card">
+                        <div class="stat-icon expense-icon">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-label">Monthly Expenses</span>
+                            <span class="stat-value expense-text" id="monthly-expenses">₹0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dashboard-grid">
+                    <div class="glass-card chart-card" id="spending-chart-card">
+                        <div class="card-header">
+                            <h3>Spending Breakdown</h3>
+                            <span class="card-badge">This Month</span>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="spending-chart"></canvas>
+                            <div class="chart-center-label" id="spending-center-label"></div>
+                            <div class="chart-empty" id="spending-chart-empty">
+                                <span class="empty-icon">📊</span>
+                                <p>No expenses yet</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="glass-card" id="recent-transactions-card">
+                        <div class="card-header">
+                            <h3>Recent Transactions</h3>
+                            <button class="link-btn" data-view="transactions">View All</button>
+                        </div>
+                        <div class="transaction-list" id="recent-transactions">
+                            <div class="empty-state" id="recent-empty">
+                                <span class="empty-icon">💸</span>
+                                <p>No transactions yet</p>
+                                <span class="empty-hint">Tap + to add your first one</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass-card insights-card" id="insights-card">
+                    <div class="card-header">
+                        <h3>✨ Quick Insights</h3>
+                    </div>
+                    <div class="insights-content" id="insights-content">
+                        <p class="insight-placeholder">Add some transactions to unlock insights!</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ============== TRANSACTIONS VIEW ============== -->
+            <section class="view" id="transactions-view">
+                <div class="transactions-toolbar glass-card">
+                    <div class="search-box">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        <input type="text" id="search-input" placeholder="Search transactions..." autocomplete="off">
+                    </div>
+                    <div class="filter-segment" id="type-filter">
+                        <button class="segment-btn active" data-filter="all">All</button>
+                        <button class="segment-btn" data-filter="income">Income</button>
+                        <button class="segment-btn" data-filter="expense">Expense</button>
+                        <div class="segment-indicator"></div>
+                    </div>
+                    <select class="category-filter glass-select" id="category-filter">
+                        <option value="all">All Categories</option>
+                    </select>
+                </div>
+                <div class="transactions-full-list" id="transactions-full-list">
+                    <div class="empty-state" id="transactions-empty">
+                        <span class="empty-icon">📋</span>
+                        <p>No transactions found</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ============== ANALYTICS VIEW ============== -->
+            <section class="view" id="analytics-view">
+                <div class="analytics-grid">
+                    <div class="glass-card chart-card wide-card" id="trend-chart-card">
+                        <div class="card-header">
+                            <h3>Monthly Trend</h3>
+                            <span class="card-badge">Last 6 Months</span>
+                        </div>
+                        <div class="chart-container chart-container-wide">
+                            <canvas id="trend-chart"></canvas>
+                            <div class="chart-empty" id="trend-chart-empty">
+                                <span class="empty-icon">📈</span>
+                                <p>Not enough data for trends</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="glass-card" id="top-categories-card">
+                        <div class="card-header">
+                            <h3>Top Spending</h3>
+                            <span class="card-badge">This Month</span>
+                        </div>
+                        <div class="top-categories-list" id="top-categories">
+                            <div class="empty-state-small">
+                                <p>No expense data yet</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="glass-card chart-card" id="category-chart-card">
+                        <div class="card-header">
+                            <h3>Category Breakdown</h3>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="category-bar-chart"></canvas>
+                            <div class="chart-empty" id="category-chart-empty">
+                                <span class="empty-icon">📊</span>
+                                <p>No data available</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="glass-card" id="summary-card">
+                        <div class="card-header">
+                            <h3>Monthly Summary</h3>
+                        </div>
+                        <div class="summary-stats" id="summary-stats">
+                            <div class="summary-item">
+                                <span class="summary-label">Avg Daily Spending</span>
+                                <span class="summary-value" id="avg-daily">₹0</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="summary-label">Largest Expense</span>
+                                <span class="summary-value" id="largest-expense">—</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="summary-label">Total Transactions</span>
+                                <span class="summary-value" id="total-transactions">0</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="summary-label">Savings Rate</span>
+                                <span class="summary-value" id="savings-rate">0%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- ======================== ADD TRANSACTION MODAL ======================== -->
+    <div class="modal-overlay" id="modal-overlay">
+        <div class="modal glass-panel" id="transaction-modal">
+            <div class="modal-header">
+                <h2>New Transaction</h2>
+                <button class="modal-close" id="modal-close" aria-label="Close">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="type-toggle" id="type-toggle">
+                    <button class="toggle-btn active" data-type="expense">Expense</button>
+                    <button class="toggle-btn" data-type="income">Income</button>
+                    <div class="toggle-indicator"></div>
+                </div>
+                <div class="form-group amount-group">
+                    <label for="amount-input">Amount</label>
+                    <div class="amount-input-wrapper">
+                        <span class="currency-symbol">₹</span>
+                        <input type="number" id="amount-input" placeholder="0" min="0" step="1" inputmode="decimal">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Category</label>
+                    <div class="category-picker" id="category-picker"></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="date-input">Date</label>
+                        <input type="date" id="date-input" class="glass-input">
+                    </div>
+                    <div class="form-group">
+                        <label for="note-input">Note <span class="optional-label">(optional)</span></label>
+                        <input type="text" id="note-input" class="glass-input" placeholder="Add a note..." maxlength="100">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="modal-cancel">Cancel</button>
+                <button class="btn btn-primary btn-save" id="modal-save">Save Transaction</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ======================== EDIT TRANSACTION MODAL ======================== -->
+    <div class="modal-overlay" id="edit-modal-overlay">
+        <div class="modal glass-panel" id="edit-transaction-modal">
+            <div class="modal-header">
+                <h2>Edit Transaction</h2>
+                <button class="modal-close" id="edit-modal-close" aria-label="Close">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="type-toggle" id="edit-type-toggle">
+                    <button class="toggle-btn active" data-type="expense">Expense</button>
+                    <button class="toggle-btn" data-type="income">Income</button>
+                    <div class="toggle-indicator"></div>
+                </div>
+                <div class="form-group amount-group">
+                    <label for="edit-amount-input">Amount</label>
+                    <div class="amount-input-wrapper">
+                        <span class="currency-symbol">₹</span>
+                        <input type="number" id="edit-amount-input" placeholder="0" min="0" step="1" inputmode="decimal">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Category</label>
+                    <div class="category-picker" id="edit-category-picker"></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="edit-date-input">Date</label>
+                        <input type="date" id="edit-date-input" class="glass-input">
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-note-input">Note <span class="optional-label">(optional)</span></label>
+                        <input type="text" id="edit-note-input" class="glass-input" placeholder="Add a note..." maxlength="100">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-danger" id="edit-delete-btn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                    Delete
+                </button>
+                <button class="btn btn-primary btn-save" id="edit-save-btn">Update</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ======================== MOBILE BOTTOM NAV ======================== -->
+    <nav class="mobile-nav glass-panel" id="mobile-nav">
+        <button class="mobile-nav-item active" data-view="dashboard" id="mob-nav-dashboard">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+            <span>Home</span>
+        </button>
+        <button class="mobile-nav-item" data-view="transactions" id="mob-nav-transactions">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            <span>History</span>
+        </button>
+        <button class="mobile-nav-item fab-item" id="mobile-add-btn">
+            <div class="fab-circle">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </div>
+        </button>
+        <button class="mobile-nav-item" data-view="analytics" id="mob-nav-analytics">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+            <span>Analytics</span>
+        </button>
+    </nav>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <script src="js/firebase-config.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

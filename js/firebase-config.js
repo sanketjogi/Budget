@@ -10,7 +10,7 @@
 // ============================================================
 
 const FIREBASE_CONFIG = {
-    apiKey: "AIzaSyDfkh6WUBw3v9rsPpDuqe_PZjitFj_G7oE",
+    apiKey: "AIzaSyDfkh6WUBw3v9rsPpDuqe_PZJitFj_G7oE",
     authDomain: "budgetflow-52c9a.firebaseapp.com",
     projectId: "budgetflow-52c9a",
     storageBucket: "budgetflow-52c9a.firebasestorage.app",

@@ -177,12 +177,11 @@ async function signInWithGoogle() {
     }
     try {
         const provider = new firebase.auth.GoogleAuthProvider();
-        await firebase.auth().signInWithPopup(provider);
+        await firebase.auth().signInWithRedirect(provider);
     } catch (e) {
-        if (e.code !== 'auth/popup-closed-by-user') {
-            console.error('Sign-in error:', e);
-            showToast('Sign-in failed. Try again.', '❌');
-        }
+        console.error('Sign-in error:', e);
+        alert("Firebase Error: " + e.message);
+        showToast('Sign-in failed. Try again.', '❌');
     }
 }
 
@@ -1332,6 +1331,12 @@ function init() {
     DOM.signinSmallBtn.addEventListener('click', signInWithGoogle);
 
     if (hasFirebase) {
+        // Catch any redirect errors
+        firebase.auth().getRedirectResult().catch(e => {
+            console.error('Redirect result error:', e);
+            alert("Firebase Redirect Error: " + e.message);
+        });
+        
         // Listen for auth state changes
         firebase.auth().onAuthStateChanged(onAuthStateChanged);
     } else {

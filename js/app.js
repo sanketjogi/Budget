@@ -177,11 +177,13 @@ async function signInWithGoogle() {
     }
     try {
         const provider = new firebase.auth.GoogleAuthProvider();
-        await firebase.auth().signInWithRedirect(provider);
+        await firebase.auth().signInWithPopup(provider);
     } catch (e) {
-        console.error('Sign-in error:', e);
-        alert("Firebase Error: " + e.message);
-        showToast('Sign-in failed. Try again.', '❌');
+        if (e.code !== 'auth/popup-closed-by-user') {
+            console.error('Sign-in error:', e);
+            alert("Firebase Error: " + e.message);
+            showToast('Sign-in failed. Try again.', '❌');
+        }
     }
 }
 

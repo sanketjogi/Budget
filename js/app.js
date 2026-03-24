@@ -1249,6 +1249,9 @@ function renderInsights() {
 
 // ======================== VASOOLI ========================
 function renderVasooli() {
+    // Guard: bail out if vasooli elements don't exist in HTML yet
+    if (!DOM.vasooliTotalLent) return;
+
     const entries = state.vasooli;
     const totalLent = entries.reduce((s, v) => s + v.amount, 0);
     const totalRecovered = entries.filter(v => v.settled).reduce((s, v) => s + v.amount, 0);
@@ -1540,18 +1543,18 @@ function initEventListeners() {
 
     // ======================== VASOOLI EVENTS ========================
     // Lend Money button
-    DOM.lendMoneyBtn.addEventListener('click', openLendModal);
+    DOM.lendMoneyBtn?.addEventListener('click', openLendModal);
 
     // Lend Modal controls
-    DOM.lendModalClose.addEventListener('click', closeLendModal);
-    DOM.lendModalCancel.addEventListener('click', closeLendModal);
-    DOM.lendModalSave.addEventListener('click', addVasooliEntry);
-    DOM.lendModalOverlay.addEventListener('click', (e) => {
+    DOM.lendModalClose?.addEventListener('click', closeLendModal);
+    DOM.lendModalCancel?.addEventListener('click', closeLendModal);
+    DOM.lendModalSave?.addEventListener('click', addVasooliEntry);
+    DOM.lendModalOverlay?.addEventListener('click', (e) => {
         if (e.target === DOM.lendModalOverlay) closeLendModal();
     });
 
     // Settle buttons + Person card expand (event delegation)
-    DOM.vasooliPersons.addEventListener('click', (e) => {
+    DOM.vasooliPersons?.addEventListener('click', (e) => {
         // Settle button
         const settleBtn = e.target.closest('.vasooli-settle-btn');
         if (settleBtn) {

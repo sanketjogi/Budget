@@ -227,7 +227,9 @@ function onAuthStateChanged(user) {
         state.transactions = [];
         state.vasooli = [];
 
+        DOM.loginOverlay.style.pointerEvents = 'none'; // don't block app during fade-out
         DOM.loginOverlay.classList.add('hidden');
+
         DOM.userSection.style.display = 'block';
         DOM.guestSection.style.display = 'none';
         DOM.userAvatar.src = user.photoURL || '';
@@ -1682,6 +1684,7 @@ function init() {
     // Auth event listeners
     DOM.googleSigninBtn.addEventListener('click', signInWithGoogle);
     DOM.skipSigninBtn.addEventListener('click', () => {
+        DOM.loginOverlay.style.pointerEvents = 'none'; // instant — don't block app during fade
         DOM.loginOverlay.classList.add('hidden');
     });
     DOM.signoutBtn.addEventListener('click', signOut);

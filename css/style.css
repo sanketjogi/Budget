@@ -265,6 +265,9 @@ body {
     display: flex;
     flex-direction: column;
     padding: 24px 16px;
+    /* Account for iPhone/iPad safe areas */
+    padding-top: max(24px, env(safe-area-inset-top, 24px));
+    padding-bottom: max(16px, env(safe-area-inset-bottom, 16px));
     border-right: 1px solid var(--panel-border);
     border-radius: 0;
     transition: transform var(--transition-normal);
@@ -316,6 +319,13 @@ body {
     transition: all var(--transition-fast);
     position: relative;
     overflow: hidden;
+    /* iOS Safari: make sure taps register */
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    text-align: left;
 }
 
 .nav-item::before {
@@ -386,7 +396,8 @@ body {
     position: sticky;
     top: 0;
     z-index: 50;
-    padding: 0;
+    /* Respect iPhone/iPad notch/status bar on all screen sizes */
+    padding: env(safe-area-inset-top, 0px) 0 0;
     margin-bottom: 8px;
 }
 

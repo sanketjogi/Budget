@@ -2318,3 +2318,127 @@ input[type="number"] {
         font-size: 16px;
     }
 }
+
+/* ======================== SPLASH SCREEN — NEON ORBIT ======================== */
+#splash-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #0d1117 0%, #0f172a 40%, #1a0a2e 70%, #0d1117 100%);
+    gap: 32px;
+    transition: opacity 0.7s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.7s;
+}
+#splash-screen.hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+.splash-orbit-system {
+    position: relative;
+    width: 200px;
+    height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.splash-orb {
+    position: relative;
+    z-index: 10;
+    width: 68px;
+    height: 68px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #ffd700, #f59e0b, #b45309);
+    box-shadow: 0 0 20px 8px rgba(245,158,11,0.65), 0 0 55px 18px rgba(245,158,11,0.3), 0 0 100px 35px rgba(245,158,11,0.12);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: splashOrbPulse 2s ease-in-out infinite;
+}
+.splash-orb-symbol {
+    color: rgba(255,255,255,0.92);
+    font-size: 28px;
+    font-weight: 800;
+    font-family: 'Inter', sans-serif;
+    text-shadow: 0 0 12px rgba(255,255,255,0.8);
+    line-height: 1;
+}
+@keyframes splashOrbPulse {
+    0%,100% { transform: scale(1);    box-shadow: 0 0 20px 8px rgba(245,158,11,0.65), 0 0 55px 18px rgba(245,158,11,0.3); }
+    50%      { transform: scale(1.1); box-shadow: 0 0 32px 12px rgba(245,158,11,0.85), 0 0 80px 28px rgba(245,158,11,0.45); }
+}
+.splash-ring {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    border-radius: 50%;
+    border: 2px solid transparent;
+}
+.splash-ring-1 {
+    width: 120px; height: 120px;
+    border-color: rgba(96,165,250,0.6);
+    box-shadow: 0 0 10px rgba(96,165,250,0.4);
+    animation: splashOrbit1 2s linear infinite;
+}
+.splash-ring-2 {
+    width: 155px; height: 155px;
+    border-color: rgba(167,139,250,0.6);
+    box-shadow: 0 0 10px rgba(167,139,250,0.4);
+    animation: splashOrbit2 3.2s linear infinite;
+}
+.splash-ring-3 {
+    width: 192px; height: 192px;
+    border-color: rgba(52,211,153,0.55);
+    box-shadow: 0 0 10px rgba(52,211,153,0.35);
+    animation: splashOrbit3 1.7s linear infinite;
+}
+@keyframes splashOrbit1 {
+    from { transform: translate(-50%,-50%) rotateX(72deg) rotateZ(0deg); }
+    to   { transform: translate(-50%,-50%) rotateX(72deg) rotateZ(360deg); }
+}
+@keyframes splashOrbit2 {
+    from { transform: translate(-50%,-50%) rotateX(72deg) rotateZ(60deg); }
+    to   { transform: translate(-50%,-50%) rotateX(72deg) rotateZ(420deg); }
+}
+@keyframes splashOrbit3 {
+    from { transform: translate(-50%,-50%) rotateX(72deg) rotateZ(120deg); }
+    to   { transform: translate(-50%,-50%) rotateX(72deg) rotateZ(480deg); }
+}
+.splash-particle {
+    position: absolute;
+    top: -5px;
+    left: 50%;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    transform: translateX(-50%);
+}
+.splash-particle-1 { background: #60a5fa; box-shadow: 0 0 12px 4px rgba(96,165,250,0.95), 0 0 28px 10px rgba(96,165,250,0.55); }
+.splash-particle-2 { background: #a78bfa; box-shadow: 0 0 12px 4px rgba(167,139,250,0.95), 0 0 28px 10px rgba(167,139,250,0.55); }
+.splash-particle-3 { background: #34d399; box-shadow: 0 0 12px 4px rgba(52,211,153,0.95), 0 0 28px 10px rgba(52,211,153,0.55); }
+.splash-wordmark {
+    font-family: 'Inter', sans-serif;
+    font-size: 30px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    background: linear-gradient(90deg, #60a5fa 0%, #a78bfa 50%, #60a5fa 100%);
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: splashShimmer 2.2s linear infinite;
+}
+.splash-tagline {
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 400;
+    color: rgba(255,255,255,0.35);
+    letter-spacing: 0.5px;
+    margin-top: -22px;
+}
+@keyframes splashShimmer {
+    from { background-position: 0% center; }
+    to   { background-position: 200% center; }
+}

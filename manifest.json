@@ -1,0 +1,19 @@
+{
+  "name": "BudgetFlow",
+  "short_name": "BudgetFlow",
+  "description": "Track your finances beautifully — synced across all your devices.",
+  "start_url": "/Budget/",
+  "scope": "/Budget/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0a0a0a",
+  "theme_color": "#0a84ff",
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

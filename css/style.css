@@ -1601,6 +1601,8 @@ input[type="number"] {
 }
 
 /* ======================== RESPONSIVE ======================== */
+
+/* ---- iPad / Tablet (768px–1024px) ---- */
 @media (max-width: 1024px) {
     .stats-grid {
         grid-template-columns: 1fr 1fr;
@@ -1616,6 +1618,10 @@ input[type="number"] {
 
     .analytics-grid {
         grid-template-columns: 1fr;
+    }
+
+    .summary-stats {
+        grid-template-columns: 1fr 1fr;
     }
 }
 
@@ -1647,7 +1653,8 @@ input[type="number"] {
 
     .main-content {
         margin-left: 0;
-        padding: 0 16px 100px;
+        /* Safe area: clears iPhone notch at top and home bar at bottom */
+        padding: 0 16px calc(100px + env(safe-area-inset-bottom, 0px));
     }
 
     .menu-toggle {
@@ -1656,40 +1663,46 @@ input[type="number"] {
 
     .topbar {
         height: 64px;
+        /* Respect iPhone notch */
+        padding-top: env(safe-area-inset-top, 0px);
     }
 
     .page-title {
         font-size: 22px;
     }
 
-    .topbar-right .btn span {
+    /* Hide the topbar "+" button on mobile — the bottom FAB handles this */
+    .topbar-right {
         display: none;
-    }
-
-    .topbar-right .btn {
-        width: 42px;
-        height: 42px;
-        padding: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 50%;
     }
 
     .mobile-nav {
         display: flex;
+        /* Safe area: sit above iPhone home indicator */
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+        height: calc(var(--mobile-nav-height) + env(safe-area-inset-bottom, 0px));
     }
 
+    /* Stats: keep 2-column layout on phone for consistency with tablet/desktop */
     .stats-grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: 1fr 1fr;
     }
 
     #balance-card {
-        grid-column: auto;
+        grid-column: 1 / -1;
+    }
+
+    .stat-card {
+        padding: 16px 18px;
     }
 
     .stat-value {
-        font-size: 22px;
+        font-size: 20px;
+    }
+
+    .stat-icon {
+        width: 36px;
+        height: 36px;
     }
 
     .filter-segment {
@@ -1727,12 +1740,13 @@ input[type="number"] {
         transform: translateY(100%);
     }
 
+    /* Summary keeps 2-col on phone */
     .summary-stats {
-        grid-template-columns: 1fr;
+        grid-template-columns: 1fr 1fr;
     }
 
     .toast-container {
-        bottom: 96px;
+        bottom: calc(96px + env(safe-area-inset-bottom, 0px));
     }
 
     .category-picker {
@@ -1746,15 +1760,42 @@ input[type="number"] {
     .blob-1 { width: 350px; height: 350px; }
     .blob-2 { width: 300px; height: 300px; }
     .blob-3 { width: 250px; height: 250px; }
-}
 
-@media (max-width: 480px) {
+    /* Insights: compact horizontal rows instead of tall blocks */
     .insights-content {
         flex-direction: column;
+        gap: 8px;
     }
 
     .insight-item {
+        flex: none;
         min-width: 0;
+        padding: 10px 14px;
+    }
+
+    /* Analytics grid: 2-col on phone */
+    .analytics-grid {
+        grid-template-columns: 1fr;
+    }
+
+    /* Login card compact on small screens */
+    .login-card {
+        padding: 36px 24px;
+    }
+}
+
+@media (max-width: 480px) {
+    /* Keep 2-col stats, just tighter padding */
+    .stats-grid {
+        gap: 10px;
+    }
+
+    .stat-card {
+        padding: 14px 14px;
+    }
+
+    .stat-value {
+        font-size: 18px;
     }
 }
 

@@ -66,6 +66,10 @@
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
                     <span>Analytics</span>
                 </button>
+                <button class="nav-item" data-view="vasooli" id="nav-vasooli">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    <span>Vasooli</span>
+                </button>
             </nav>
             <div class="sidebar-footer">
                 <div class="user-section" id="user-section" style="display:none">
@@ -274,7 +278,82 @@
                     </div>
                 </div>
             </section>
+
+            <!-- ======================== VASOOLI VIEW ======================== -->
+            <section class="view" id="vasooli-view">
+                <!-- Summary Stats -->
+                <div class="vasooli-summary">
+                    <div class="vasooli-stat-card glass-card">
+                        <span class="vasooli-stat-label">💸 Total Lent Out</span>
+                        <span class="vasooli-stat-value" id="vasooli-total-lent">₹0</span>
+                    </div>
+                    <div class="vasooli-stat-card glass-card">
+                        <span class="vasooli-stat-label">✅ Recovered</span>
+                        <span class="vasooli-stat-value vasooli-green" id="vasooli-total-recovered">₹0</span>
+                    </div>
+                    <div class="vasooli-stat-card glass-card vasooli-highlight">
+                        <span class="vasooli-stat-label">🔴 Still Owed</span>
+                        <span class="vasooli-stat-value vasooli-red" id="vasooli-still-owed">₹0</span>
+                    </div>
+                </div>
+
+                <!-- Lend Money Button -->
+                <div class="vasooli-actions">
+                    <button class="btn btn-primary" id="lend-money-btn">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        <span>Lend Money</span>
+                    </button>
+                </div>
+
+                <!-- Person Cards -->
+                <div class="vasooli-persons" id="vasooli-persons"></div>
+
+                <!-- Empty State -->
+                <div class="vasooli-empty glass-card" id="vasooli-empty">
+                    <span class="vasooli-empty-icon">🤝</span>
+                    <p class="vasooli-empty-title">No pending vasooli</p>
+                    <p class="vasooli-empty-subtitle">Tap "Lend Money" to track money you lend to people</p>
+                </div>
+            </section>
         </main>
+    </div>
+
+    <!-- ======================== LEND MONEY MODAL ======================== -->
+    <div class="modal-overlay" id="lend-modal-overlay">
+        <div class="modal glass-panel" id="lend-modal">
+            <div class="modal-header">
+                <h2>Lend Money</h2>
+                <button class="modal-close" id="lend-modal-close" aria-label="Close">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="lend-person-input">Person Name</label>
+                    <input type="text" class="glass-input" id="lend-person-input" placeholder="e.g. Rahul" autocomplete="off" list="person-suggestions">
+                    <datalist id="person-suggestions"></datalist>
+                </div>
+                <div class="form-group amount-group">
+                    <label for="lend-amount-input">Amount</label>
+                    <div class="amount-input-wrapper">
+                        <span class="currency-symbol">₹</span>
+                        <input type="number" id="lend-amount-input" placeholder="0" min="1" step="1" inputmode="decimal">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="lend-note-input">What's it for?</label>
+                    <input type="text" class="glass-input" id="lend-note-input" placeholder="e.g. Lunch money, Emergency, etc.">
+                </div>
+                <div class="form-group">
+                    <label for="lend-date-input">Date</label>
+                    <input type="date" class="glass-input" id="lend-date-input">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="lend-modal-cancel">Cancel</button>
+                <button class="btn btn-primary btn-save" id="lend-modal-save">Lend</button>
+            </div>
+        </div>
     </div>
 
     <!-- ======================== ADD TRANSACTION MODAL ======================== -->
@@ -382,6 +461,10 @@
             <div class="fab-circle">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             </div>
+        </button>
+        <button class="mobile-nav-item" data-view="vasooli" id="mob-nav-vasooli">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            <span>Vasooli</span>
         </button>
         <button class="mobile-nav-item" data-view="analytics" id="mob-nav-analytics">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>

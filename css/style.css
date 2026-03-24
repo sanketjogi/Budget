@@ -2024,3 +2024,297 @@ input[type="number"] {
     background: var(--accent);
     color: #fff;
 }
+
+/* ======================== VASOOLI VIEW ======================== */
+
+/* Summary Stats Row */
+.vasooli-summary {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.vasooli-stat-card {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 20px;
+}
+
+.vasooli-stat-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.vasooli-stat-value {
+    font-size: 24px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    color: var(--text-primary);
+}
+
+.vasooli-stat-value.vasooli-green { color: var(--green); }
+.vasooli-stat-value.vasooli-red { color: var(--red); }
+
+.vasooli-highlight {
+    border-left: 3px solid var(--red);
+}
+
+/* Actions */
+.vasooli-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 20px;
+}
+
+/* Person Cards */
+.vasooli-persons {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.vasooli-person-card {
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+}
+
+.vasooli-person-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 20px;
+    cursor: pointer;
+    transition: background var(--transition-fast);
+}
+
+.vasooli-person-header:hover {
+    background: var(--input-bg);
+}
+
+.vasooli-person-left {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.vasooli-person-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: var(--accent-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--accent);
+    flex-shrink: 0;
+}
+
+.vasooli-person-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.vasooli-person-name {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.vasooli-person-count {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.vasooli-person-right {
+    text-align: right;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+}
+
+.vasooli-person-amount {
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--red);
+    letter-spacing: -0.3px;
+}
+
+.vasooli-person-amount.all-settled {
+    color: var(--green);
+}
+
+.vasooli-person-chevron {
+    font-size: 12px;
+    color: var(--text-tertiary);
+    transition: transform var(--transition-fast);
+}
+
+.vasooli-person-card.expanded .vasooli-person-chevron {
+    transform: rotate(180deg);
+}
+
+/* Entry list (collapsible) */
+.vasooli-entries {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.35s var(--ease-smooth);
+}
+
+.vasooli-person-card.expanded .vasooli-entries {
+    max-height: 2000px;
+}
+
+.vasooli-entry {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 20px 14px 78px;
+    border-top: 1px solid var(--glass-border);
+    transition: opacity var(--transition-fast);
+}
+
+.vasooli-entry.settled {
+    opacity: 0.5;
+}
+
+.vasooli-entry-left {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    flex: 1;
+}
+
+.vasooli-entry-note {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.vasooli-entry.settled .vasooli-entry-note {
+    text-decoration: line-through;
+    color: var(--text-secondary);
+}
+
+.vasooli-entry-date {
+    font-size: 11px;
+    color: var(--text-tertiary);
+}
+
+.vasooli-entry-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+}
+
+.vasooli-entry-amount {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--red);
+}
+
+.vasooli-entry.settled .vasooli-entry-amount {
+    color: var(--green);
+    text-decoration: line-through;
+}
+
+.vasooli-settle-btn {
+    padding: 6px 14px;
+    border: none;
+    border-radius: var(--radius-xl);
+    background: var(--green-bg);
+    color: var(--green);
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    white-space: nowrap;
+}
+
+.vasooli-settle-btn:hover {
+    background: var(--green);
+    color: #fff;
+    transform: translateY(-1px);
+}
+
+.vasooli-settled-badge {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--green);
+    padding: 4px 10px;
+    background: var(--green-bg);
+    border-radius: var(--radius-xl);
+}
+
+/* Empty State */
+.vasooli-empty {
+    text-align: center;
+    padding: 60px 24px;
+}
+
+.vasooli-empty-icon {
+    font-size: 48px;
+    display: block;
+    margin-bottom: 16px;
+}
+
+.vasooli-empty-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+}
+
+.vasooli-empty-subtitle {
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+/* Responsive — Tablet */
+@media (max-width: 1024px) {
+    .vasooli-summary {
+        grid-template-columns: 1fr 1fr;
+    }
+    .vasooli-summary .vasooli-stat-card.vasooli-highlight {
+        grid-column: 1 / -1;
+    }
+}
+
+/* Responsive — Phone */
+@media (max-width: 768px) {
+    .vasooli-summary {
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+    }
+    .vasooli-summary .vasooli-stat-card.vasooli-highlight {
+        grid-column: 1 / -1;
+    }
+    .vasooli-stat-card {
+        padding: 14px 16px;
+    }
+    .vasooli-stat-value {
+        font-size: 20px;
+    }
+    .vasooli-entry {
+        padding-left: 20px;
+    }
+    .vasooli-person-avatar {
+        width: 38px;
+        height: 38px;
+        font-size: 16px;
+    }
+}

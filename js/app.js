@@ -145,6 +145,9 @@ const DOM = {
     signinSmallBtn: $('#signin-small-btn'),
     appContainer:   $('#app-container'),
 
+    // Splash
+    splashScreen:         $('#splash-screen'),
+
     // Vasooli
     vasooliTotalLent:     $('#vasooli-total-lent'),
     vasooliTotalRecovered: $('#vasooli-total-recovered'),
@@ -185,6 +188,19 @@ function initFirebase() {
         console.warn('Firebase init failed:', e);
         return false;
     }
+}
+
+// ======================== SPLASH ========================
+const _splashShownAt = Date.now();
+function hideSplash() {
+    const elapsed = Date.now() - _splashShownAt;
+    const minDuration = 900; // ms — let the animation breathe
+    const delay = Math.max(0, minDuration - elapsed);
+    setTimeout(() => {
+        if (!DOM.splashScreen) return;
+        DOM.splashScreen.style.pointerEvents = 'none';
+        DOM.splashScreen.classList.add('hidden');
+    }, delay);
 }
 
 // Google Sign-In
@@ -235,7 +251,8 @@ function onAuthStateChanged(user) {
         DOM.userAvatar.src = user.photoURL || '';
         DOM.userName.textContent = user.displayName || user.email || 'User';
 
-        // Start real-time sync
+        // Hide splash and start real-time sync
+        hideSplash();
         startRealtimeSync(user.uid);
     } else {
         // Signed out / guest
@@ -250,6 +267,7 @@ function onAuthStateChanged(user) {
         // Load from localStorage
         loadFromLocalStorage();
         renderAll();
+        hideSplash();
     }
 }
 
@@ -1687,8 +1705,9 @@ function init() {
     // Auth event listeners
     DOM.googleSigninBtn.addEventListener('click', signInWithGoogle);
     DOM.skipSigninBtn.addEventListener('click', () => {
-        DOM.loginOverlay.style.pointerEvents = 'none'; // instant — don't block app during fade
+        DOM.loginOverlay.style.pointerEvents = 'none';
         DOM.loginOverlay.classList.add('hidden');
+        hideSplash();
     });
     DOM.signoutBtn.addEventListener('click', signOut);
     DOM.signinSmallBtn.addEventListener('click', signInWithGoogle);
@@ -1705,6 +1724,7 @@ function init() {
         // No Firebase — hide login overlay, use localStorage
         DOM.loginOverlay.classList.add('hidden');
         DOM.guestSection.style.display = 'none';
+        hideSplash();
     }
 }
 

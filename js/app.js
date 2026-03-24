@@ -45,6 +45,7 @@ const CATEGORY_COLORS = {
 // ======================== STATE ========================
 let state = {
     transactions: [],
+    vasooli: [],
     currentView: 'dashboard',
     typeFilter: 'all',
     categoryFilter: 'all',
@@ -143,6 +144,23 @@ const DOM = {
     signoutBtn:     $('#signout-btn'),
     signinSmallBtn: $('#signin-small-btn'),
     appContainer:   $('#app-container'),
+
+    // Vasooli
+    vasooliTotalLent:     $('#vasooli-total-lent'),
+    vasooliTotalRecovered: $('#vasooli-total-recovered'),
+    vasooliStillOwed:     $('#vasooli-still-owed'),
+    vasooliPersons:       $('#vasooli-persons'),
+    vasooliEmpty:         $('#vasooli-empty'),
+    lendMoneyBtn:         $('#lend-money-btn'),
+    lendModalOverlay:     $('#lend-modal-overlay'),
+    lendModalClose:       $('#lend-modal-close'),
+    lendModalCancel:      $('#lend-modal-cancel'),
+    lendModalSave:        $('#lend-modal-save'),
+    lendPersonInput:      $('#lend-person-input'),
+    lendAmountInput:      $('#lend-amount-input'),
+    lendNoteInput:        $('#lend-note-input'),
+    lendDateInput:        $('#lend-date-input'),
+    personSuggestions:    $('#person-suggestions'),
 };
 
 // ======================== FIREBASE ========================
@@ -202,7 +220,13 @@ async function signOut() {
 
 function onAuthStateChanged(user) {
     if (user) {
-        // Signed in
+        // Signed in — wipe demo / guest data so real Firestore data loads clean
+        localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem(STORAGE_KEY + '_vasooli');
+        localStorage.setItem(STORAGE_KEY + '_user_ever_logged_in', '1');
+        state.transactions = [];
+        state.vasooli = [];
+
         DOM.loginOverlay.classList.add('hidden');
         DOM.userSection.style.display = 'block';
         DOM.guestSection.style.display = 'none';
@@ -231,18 +255,34 @@ function startRealtimeSync(uid) {
     if (!db) return;
     if (unsubscribeSnapshot) unsubscribeSnapshot();
 
-    unsubscribeSnapshot = db.collection('users').doc(uid)
+    // Listen for transactions
+    const unsubTxns = db.collection('users').doc(uid)
         .collection('transactions')
         .onSnapshot((snapshot) => {
             state.transactions = snapshot.docs.map(doc => doc.data());
-            saveToLocalStorage(); // cache locally
+            saveToLocalStorage();
             renderAll();
         }, (error) => {
             console.error('Firestore sync error:', error);
-            // Fallback to localStorage
             loadFromLocalStorage();
             renderAll();
         });
+
+    // Listen for vasooli
+    const unsubVasooli = db.collection('users').doc(uid)
+        .collection('vasooli')
+        .onSnapshot((snapshot) => {
+            state.vasooli = snapshot.docs.map(doc => doc.data());
+            saveToLocalStorage();
+            renderAll();
+        }, (error) => {
+            console.error('Vasooli sync error:', error);
+        });
+
+    unsubscribeSnapshot = () => {
+        unsubTxns();
+        unsubVasooli();
+    };
 }
 
 // ======================== DATA PERSISTENCE ========================
@@ -256,6 +296,7 @@ function saveData() {
 function saveToLocalStorage() {
     try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(state.transactions));
+        localStorage.setItem(STORAGE_KEY + '_vasooli', JSON.stringify(state.vasooli));
     } catch (e) {
         console.warn('Storage error:', e);
     }
@@ -267,9 +308,19 @@ function loadFromLocalStorage() {
         if (data) {
             state.transactions = JSON.parse(data);
         }
+        const vasooliData = localStorage.getItem(STORAGE_KEY + '_vasooli');
+        if (vasooliData) {
+            state.vasooli = JSON.parse(vasooliData);
+        }
+        // Auto-seed with demo data only if no one has ever logged in on this device
+        const hasEverLoggedIn = localStorage.getItem(STORAGE_KEY + '_user_ever_logged_in');
+        if (state.transactions.length === 0 && state.vasooli.length === 0 && !hasEverLoggedIn) {
+            seedDemoData();
+        }
     } catch (e) {
         console.warn('Load error:', e);
         state.transactions = [];
+        state.vasooli = [];
     }
 }
 
@@ -302,6 +353,30 @@ async function saveToFirestore() {
         await batch.commit();
     } catch (e) {
         console.warn('Firestore save error:', e);
+    }
+
+    // Save vasooli
+    try {
+        const batch2 = db.batch();
+        const vasRef = db.collection('users').doc(user.uid).collection('vasooli');
+
+        const vasSnap = await vasRef.get();
+        const vasFireIds = new Set(vasSnap.docs.map(d => d.id));
+        const vasLocalIds = new Set(state.vasooli.map(v => v.id));
+
+        vasSnap.docs.forEach(doc => {
+            if (!vasLocalIds.has(doc.id)) {
+                batch2.delete(doc.ref);
+            }
+        });
+
+        state.vasooli.forEach(v => {
+            batch2.set(vasRef.doc(v.id), v);
+        });
+
+        await batch2.commit();
+    } catch (e) {
+        console.warn('Vasooli Firestore save error:', e);
     }
 }
 
@@ -386,7 +461,11 @@ function getAllTimeTotals() {
         if (t.type === 'income') income += t.amount;
         else expense += t.amount;
     });
-    return { income, expense, balance: income - expense };
+    // Subtract unsettled vasooli from balance
+    const unsettledVasooli = state.vasooli
+        .filter(v => !v.settled)
+        .reduce((sum, v) => sum + v.amount, 0);
+    return { income, expense, balance: income - expense - unsettledVasooli };
 }
 
 // ======================== TOAST NOTIFICATIONS ========================
@@ -432,6 +511,7 @@ const VIEW_META = {
     dashboard:    { title: 'Dashboard',    subtitle: "Here's your financial overview" },
     transactions: { title: 'Transactions', subtitle: 'Your complete transaction history' },
     analytics:    { title: 'Analytics',    subtitle: 'Insights into your spending habits' },
+    vasooli:      { title: 'Vasooli',      subtitle: 'Track money you\'ve lent to people' },
 };
 
 function switchView(viewName) {
@@ -459,6 +539,7 @@ function switchView(viewName) {
     // Render view-specific content
     if (viewName === 'analytics') renderAnalytics();
     if (viewName === 'transactions') renderTransactionsView();
+    if (viewName === 'vasooli') renderVasooli();
 }
 
 // ======================== MODAL ========================
@@ -619,6 +700,7 @@ function renderAll() {
     populateCategoryFilter();
     if (state.currentView === 'transactions') renderTransactionsView();
     if (state.currentView === 'analytics') renderAnalytics();
+    if (state.currentView === 'vasooli') renderVasooli();
 }
 
 // Stats
@@ -1163,6 +1245,152 @@ function renderInsights() {
     `).join('');
 }
 
+// ======================== VASOOLI ========================
+function renderVasooli() {
+    const entries = state.vasooli;
+    const totalLent = entries.reduce((s, v) => s + v.amount, 0);
+    const totalRecovered = entries.filter(v => v.settled).reduce((s, v) => s + v.amount, 0);
+    const stillOwed = totalLent - totalRecovered;
+
+    DOM.vasooliTotalLent.textContent = formatCurrency(totalLent);
+    DOM.vasooliTotalRecovered.textContent = formatCurrency(totalRecovered);
+    DOM.vasooliStillOwed.textContent = formatCurrency(stillOwed);
+
+    // Group by person
+    const personMap = {};
+    entries.forEach(v => {
+        const name = v.person.trim();
+        if (!personMap[name]) personMap[name] = [];
+        personMap[name].push(v);
+    });
+
+    const persons = Object.keys(personMap);
+
+    if (persons.length === 0) {
+        DOM.vasooliEmpty.style.display = 'block';
+        DOM.vasooliPersons.innerHTML = '';
+        return;
+    }
+
+    DOM.vasooliEmpty.style.display = 'none';
+
+    // Sort: people who still owe first, then alphabetically
+    persons.sort((a, b) => {
+        const aOwed = personMap[a].filter(v => !v.settled).reduce((s, v) => s + v.amount, 0);
+        const bOwed = personMap[b].filter(v => !v.settled).reduce((s, v) => s + v.amount, 0);
+        if (aOwed > 0 && bOwed === 0) return -1;
+        if (aOwed === 0 && bOwed > 0) return 1;
+        return a.localeCompare(b);
+    });
+
+    DOM.vasooliPersons.innerHTML = persons.map(name => {
+        const items = personMap[name].sort((a, b) => new Date(b.date) - new Date(a.date));
+        const unsettled = items.filter(v => !v.settled).reduce((s, v) => s + v.amount, 0);
+        const allSettled = unsettled === 0;
+        const initial = name.charAt(0).toUpperCase();
+        const count = items.length;
+        const unsettledCount = items.filter(v => !v.settled).length;
+
+        const entriesHTML = items.map(v => `
+            <div class="vasooli-entry ${v.settled ? 'settled' : ''}" data-vasooli-id="${v.id}">
+                <div class="vasooli-entry-left">
+                    <span class="vasooli-entry-note">${v.note || 'No reason specified'}</span>
+                    <span class="vasooli-entry-date">${formatDate(v.date)}</span>
+                </div>
+                <div class="vasooli-entry-right">
+                    <span class="vasooli-entry-amount">${formatCurrency(v.amount)}</span>
+                    ${v.settled
+                        ? '<span class="vasooli-settled-badge">Settled ✅</span>'
+                        : `<button class="vasooli-settle-btn" data-settle-id="${v.id}">Settle</button>`
+                    }
+                </div>
+            </div>
+        `).join('');
+
+        return `
+            <div class="vasooli-person-card glass-card" data-person="${name}">
+                <div class="vasooli-person-header">
+                    <div class="vasooli-person-left">
+                        <div class="vasooli-person-avatar">${initial}</div>
+                        <div class="vasooli-person-info">
+                            <span class="vasooli-person-name">${name}</span>
+                            <span class="vasooli-person-count">${unsettledCount > 0 ? unsettledCount + ' pending' : 'All settled'} · ${count} total</span>
+                        </div>
+                    </div>
+                    <div class="vasooli-person-right">
+                        <span class="vasooli-person-amount ${allSettled ? 'all-settled' : ''}">${allSettled ? '✅' : formatCurrency(unsettled)}</span>
+                        <span class="vasooli-person-chevron">▼</span>
+                    </div>
+                </div>
+                <div class="vasooli-entries">${entriesHTML}</div>
+            </div>
+        `;
+    }).join('');
+
+    // Update person autocomplete suggestions
+    updatePersonSuggestions();
+}
+
+function updatePersonSuggestions() {
+    const uniqueNames = [...new Set(state.vasooli.map(v => v.person.trim()))];
+    DOM.personSuggestions.innerHTML = uniqueNames.map(n => `<option value="${n}">`).join('');
+}
+
+function openLendModal() {
+    DOM.lendPersonInput.value = '';
+    DOM.lendAmountInput.value = '';
+    DOM.lendNoteInput.value = '';
+    DOM.lendDateInput.value = new Date().toISOString().split('T')[0];
+    updatePersonSuggestions();
+    DOM.lendModalOverlay.classList.add('active');
+    setTimeout(() => DOM.lendPersonInput.focus(), 350);
+}
+
+function closeLendModal() {
+    DOM.lendModalOverlay.classList.remove('active');
+}
+
+function addVasooliEntry() {
+    const person = DOM.lendPersonInput.value.trim();
+    if (!person) {
+        showToast('Enter the person name', '⚠️');
+        DOM.lendPersonInput.focus();
+        return;
+    }
+
+    const amount = parseFloat(DOM.lendAmountInput.value);
+    if (!amount || amount <= 0) {
+        showToast('Please enter a valid amount', '⚠️');
+        DOM.lendAmountInput.focus();
+        return;
+    }
+
+    const entry = {
+        id: generateId(),
+        person: person,
+        amount: amount,
+        note: DOM.lendNoteInput.value.trim(),
+        date: DOM.lendDateInput.value || new Date().toISOString().split('T')[0],
+        settled: false,
+        createdAt: Date.now(),
+    };
+
+    state.vasooli.unshift(entry);
+    saveData();
+    closeLendModal();
+    renderAll();
+    showToast(`₹${amount.toLocaleString('en-IN')} lent to ${person}`, '💸');
+}
+
+function settleVasooli(id) {
+    const entry = state.vasooli.find(v => v.id === id);
+    if (!entry || entry.settled) return;
+    entry.settled = true;
+    saveData();
+    renderAll();
+    showToast(`₹${entry.amount.toLocaleString('en-IN')} recovered from ${entry.person}`, '✅');
+}
+
 // ======================== SEGMENTED CONTROL ========================
 function initSegmentedControl(container, callback) {
     const btns = container.querySelectorAll('.segment-btn');
@@ -1298,6 +1526,7 @@ function initEventListeners() {
         if (e.key === 'Escape') {
             if (DOM.modalOverlay.classList.contains('active')) closeAddModal();
             if (DOM.editModalOverlay.classList.contains('active')) closeEditModal();
+            if (DOM.lendModalOverlay.classList.contains('active')) closeLendModal();
         }
     });
 
@@ -1306,6 +1535,133 @@ function initEventListeners() {
         renderSpendingChart();
         if (state.currentView === 'analytics') renderAnalytics();
     });
+
+    // ======================== VASOOLI EVENTS ========================
+    // Lend Money button
+    DOM.lendMoneyBtn.addEventListener('click', openLendModal);
+
+    // Lend Modal controls
+    DOM.lendModalClose.addEventListener('click', closeLendModal);
+    DOM.lendModalCancel.addEventListener('click', closeLendModal);
+    DOM.lendModalSave.addEventListener('click', addVasooliEntry);
+    DOM.lendModalOverlay.addEventListener('click', (e) => {
+        if (e.target === DOM.lendModalOverlay) closeLendModal();
+    });
+
+    // Settle buttons + Person card expand (event delegation)
+    DOM.vasooliPersons.addEventListener('click', (e) => {
+        // Settle button
+        const settleBtn = e.target.closest('.vasooli-settle-btn');
+        if (settleBtn) {
+            settleVasooli(settleBtn.dataset.settleId);
+            return;
+        }
+
+        // Person header → expand/collapse
+        const header = e.target.closest('.vasooli-person-header');
+        if (header) {
+            const card = header.closest('.vasooli-person-card');
+            card.classList.toggle('expanded');
+        }
+    });
+}
+
+// ======================== DEMO SEED DATA ========================
+function seedDemoData() {
+    const T = (id, type, amount, category, date, note) => ({
+        id, type, amount, category, date, note: note || '', createdAt: new Date(date).getTime()
+    });
+
+    state.transactions = [
+        // ── JANUARY 2026 ────────────────────────────────────────
+        T('t01', 'income',  45000, 'salary',        '2026-01-01', 'January Salary'),
+        T('t02', 'expense', 15000, 'rent',           '2026-01-02', 'January Rent'),
+        T('t03', 'expense',  3200, 'groceries',      '2026-01-05', 'BigBazaar'),
+        T('t04', 'expense',  1800, 'transport',      '2026-01-07', 'Ola / Petrol'),
+        T('t05', 'expense',   650, 'food',           '2026-01-09', 'Dinner with friends'),
+        T('t06', 'expense',   199, 'subscriptions',  '2026-01-10', 'Netflix'),
+        T('t07', 'expense',   149, 'subscriptions',  '2026-01-10', 'Spotify'),
+        T('t08', 'expense',  2400, 'shopping',       '2026-01-12', 'Clothes — Myntra'),
+        T('t09', 'income',   8000, 'freelance',      '2026-01-15', 'Logo design project'),
+        T('t10', 'expense',   800, 'health',         '2026-01-16', 'Pharmacy'),
+        T('t11', 'expense',  1200, 'food',           '2026-01-18', 'Zomato orders'),
+        T('t12', 'expense',   500, 'entertainment',  '2026-01-20', 'Movie — PVR'),
+        T('t13', 'expense',  3000, 'utilities',      '2026-01-22', 'Electricity & Water bill'),
+        T('t14', 'expense',   350, 'smoking',        '2026-01-24', 'Cigarettes'),
+        T('t15', 'expense',  5000, 'savings',        '2026-01-28', 'SIP — Mutual Fund'),
+        T('t16', 'expense',   900, 'food',           '2026-01-30', 'Swiggy'),
+
+        // ── FEBRUARY 2026 ───────────────────────────────────────
+        T('t17', 'income',  45000, 'salary',         '2026-02-01', 'February Salary'),
+        T('t18', 'expense', 15000, 'rent',            '2026-02-02', 'February Rent'),
+        T('t19', 'expense',  2800, 'groceries',       '2026-02-04', 'Reliance Fresh'),
+        T('t20', 'expense',  1500, 'transport',       '2026-02-06', 'Metro Card Recharge'),
+        T('t21', 'expense',   480, 'food',            '2026-02-08', 'Chai & Snacks'),
+        T('t22', 'expense',   199, 'subscriptions',   '2026-02-10', 'Netflix'),
+        T('t23', 'income',  12000, 'freelance',       '2026-02-12', 'Website development'),
+        T('t24', 'expense',  4500, 'shopping',        '2026-02-14', "Valentine's Day gifts"),
+        T('t25', 'expense',  1800, 'health',          '2026-02-15', 'Doctor visit'),
+        T('t26', 'expense',  2200, 'food',            '2026-02-17', 'Groceries + dining out'),
+        T('t27', 'expense',   800, 'entertainment',   '2026-02-20', 'Amazon Prime'),
+        T('t28', 'expense',  2500, 'utilities',       '2026-02-22', 'Phone bill + Internet'),
+        T('t29', 'expense',   350, 'smoking',         '2026-02-24', 'Cigarettes'),
+        T('t30', 'expense',  5000, 'savings',         '2026-02-28', 'SIP — Mutual Fund'),
+        T('t31', 'income',   2500, 'refund',          '2026-02-26', 'Amazon return refund'),
+        T('t32', 'expense',  6000, 'education',       '2026-02-27', 'Online course — Udemy'),
+
+        // ── MARCH 2026 ──────────────────────────────────────────
+        T('t33', 'income',  45000, 'salary',          '2026-03-01', 'March Salary'),
+        T('t34', 'expense', 15000, 'rent',             '2026-03-02', 'March Rent'),
+        T('t35', 'expense',  3500, 'groceries',        '2026-03-04', 'D-Mart'),
+        T('t36', 'expense',  1600, 'transport',        '2026-03-06', 'Cab & Petrol'),
+        T('t37', 'expense',   800, 'food',             '2026-03-08', 'Birthday dinner'),
+        T('t38', 'expense',   199, 'subscriptions',    '2026-03-10', 'Netflix'),
+        T('t39', 'expense',   149, 'subscriptions',    '2026-03-10', 'Spotify'),
+        T('t40', 'income',   5000, 'gifts',            '2026-03-12', 'Gift from parents'),
+        T('t41', 'expense',  3800, 'shopping',         '2026-03-14', 'Flipkart sale haul'),
+        T('t42', 'expense',   600, 'health',           '2026-03-16', 'Gym supplement'),
+        T('t43', 'expense',  1900, 'food',             '2026-03-17', 'Zomato + Swiggy'),
+        T('t44', 'expense',  1200, 'entertainment',    '2026-03-19', 'Concert tickets'),
+        T('t45', 'expense',  2800, 'utilities',        '2026-03-21', 'Electricity + Gas'),
+        T('t46', 'expense',   700, 'smoking',          '2026-03-22', 'Cigarettes'),
+        T('t47', 'expense',  5000, 'savings',          '2026-03-23', 'SIP — Mutual Fund'),
+        T('t48', 'expense',  1100, 'food',             '2026-03-24', 'Team lunch'),
+    ];
+
+    state.vasooli = [
+        {
+            id: 'v01', person: 'Rahul', amount: 3000,
+            note: 'Emergency hospital bill', date: '2026-01-08',
+            settled: true, createdAt: new Date('2026-01-08').getTime()
+        },
+        {
+            id: 'v02', person: 'Priya', amount: 1500,
+            note: 'Shared vacation expenses', date: '2026-01-20',
+            settled: false, createdAt: new Date('2026-01-20').getTime()
+        },
+        {
+            id: 'v03', person: 'Rahul', amount: 800,
+            note: 'Lunch tab — office party', date: '2026-02-14',
+            settled: false, createdAt: new Date('2026-02-14').getTime()
+        },
+        {
+            id: 'v04', person: 'Arjun', amount: 5000,
+            note: 'Bike repair loan', date: '2026-02-22',
+            settled: true, createdAt: new Date('2026-02-22').getTime()
+        },
+        {
+            id: 'v05', person: 'Priya', amount: 2000,
+            note: 'Shopping trip contribution', date: '2026-03-10',
+            settled: false, createdAt: new Date('2026-03-10').getTime()
+        },
+        {
+            id: 'v06', person: 'Karthik', amount: 4500,
+            note: 'College trip advance', date: '2026-03-18',
+            settled: false, createdAt: new Date('2026-03-18').getTime()
+        },
+    ];
+
+    saveToLocalStorage();
 }
 
 // ======================== INIT ========================

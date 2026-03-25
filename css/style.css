@@ -2464,3 +2464,17 @@ input[type="number"] {
     from { background-position: 0% center; }
     to   { background-position: 200% center; }
 }
+
+/* ── Light Mode Overrides for Splash Screen ── */
+@media (prefers-color-scheme: light) {
+    #splash-screen {
+        background: linear-gradient(135deg, #f5f5f7 0%, #ffffff 40%, #f0f4f8 70%, #f5f5f7 100%);
+    }
+    .splash-orb-symbol {
+        color: #1d1d1f;
+        text-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
+    }
+    .splash-tagline {
+        color: rgba(29, 29, 31, 0.5);
+    }
+}

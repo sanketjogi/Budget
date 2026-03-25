@@ -1323,7 +1323,10 @@ function renderVasooli() {
                 <div class="vasooli-entry-right">
                     <span class="vasooli-entry-amount">${formatCurrency(v.amount)}</span>
                     ${v.settled
-                        ? '<span class="vasooli-settled-badge">Settled ✅</span>'
+                        ? `<span class="vasooli-settled-badge">Settled ✅</span>
+                           <button class="vasooli-delete-btn" aria-label="Delete" title="Delete record" data-delete-id="${v.id}">
+                               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                           </button>`
                         : `<button class="vasooli-settle-btn" data-settle-id="${v.id}">Settle</button>`
                     }
                 </div>
@@ -1412,6 +1415,14 @@ function settleVasooli(id) {
     saveData();
     renderAll();
     showToast(`₹${entry.amount.toLocaleString('en-IN')} recovered from ${entry.person}`, '✅');
+}
+
+function deleteVasooli(id) {
+    if (!confirm('Are you sure you want to delete this settled record?')) return;
+    state.vasooli = state.vasooli.filter(v => v.id !== id);
+    saveData();
+    renderAll();
+    showToast('Record deleted', '🗑️');
 }
 
 // ======================== SEGMENTED CONTROL ========================
@@ -1577,6 +1588,13 @@ function initEventListeners() {
         const settleBtn = e.target.closest('.vasooli-settle-btn');
         if (settleBtn) {
             settleVasooli(settleBtn.dataset.settleId);
+            return;
+        }
+
+        // Delete button
+        const deleteBtn = e.target.closest('.vasooli-delete-btn');
+        if (deleteBtn) {
+            deleteVasooli(deleteBtn.dataset.deleteId);
             return;
         }
 

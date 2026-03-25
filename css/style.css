@@ -2251,10 +2251,32 @@ input[type="number"] {
     transform: translateY(-1px);
 }
 
+.vasooli-delete-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px;
+    border: none;
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    margin-left: 4px;
+}
+
+.vasooli-delete-btn:hover {
+    background: var(--red-bg);
+    color: var(--red);
+}
+
 .vasooli-settled-badge {
     font-size: 12px;
-    font-weight: 600;
-    color: var(--green);
+    font-weight: 500;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 4px;
     padding: 4px 10px;
     background: var(--green-bg);
     border-radius: var(--radius-xl);

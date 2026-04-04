@@ -1673,9 +1673,22 @@ input[type="number"] {
     }
 
     .topbar {
-        height: 64px;
-        /* Respect iPhone notch */
-        padding-top: env(safe-area-inset-top, 0px);
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        height: auto;
+        min-height: 64px;
+        /* Push content below Dynamic Island / notch */
+        padding: calc(env(safe-area-inset-top, 20px) + 8px) 0 12px;
+        /* Liquid glass frosted blur effect */
+        background: var(--glass-bg);
+        -webkit-backdrop-filter: saturate(var(--glass-saturate)) blur(28px);
+        backdrop-filter: saturate(var(--glass-saturate)) blur(28px);
+        border-bottom: 1px solid var(--glass-border);
+        margin-left: -16px;
+        margin-right: -16px;
+        padding-left: 16px;
+        padding-right: 16px;
     }
 
     .page-title {

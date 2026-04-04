@@ -159,11 +159,23 @@ const DOM = {
     lendModalClose:       $('#lend-modal-close'),
     lendModalCancel:      $('#lend-modal-cancel'),
     lendModalSave:        $('#lend-modal-save'),
+    lendModalTitle:       $('#lend-modal-title'),
     lendPersonInput:      $('#lend-person-input'),
     lendAmountInput:      $('#lend-amount-input'),
+    lendAmountLabel:      $('#lend-amount-label'),
     lendNoteInput:        $('#lend-note-input'),
     lendDateInput:        $('#lend-date-input'),
     personSuggestions:    $('#person-suggestions'),
+    lendModeToggle:       $('#lend-mode-toggle'),
+    lendIndividualPerson: $('#lend-individual-person'),
+    splitPeopleSection:   $('#split-people-section'),
+    splitPersonInput:     $('#split-person-input'),
+    splitAddPerson:       $('#split-add-person'),
+    splitChips:           $('#split-chips'),
+    splitIncludeSelf:     $('#split-include-self'),
+    splitPreview:         $('#split-preview'),
+    splitPreviewHeader:   $('#split-preview-header'),
+    splitPreviewList:     $('#split-preview-list'),
 };
 
 // ======================== FIREBASE ========================
@@ -1323,12 +1335,12 @@ function renderVasooli() {
                 <div class="vasooli-entry-right">
                     <span class="vasooli-entry-amount">${formatCurrency(v.amount)}</span>
                     ${v.settled
-                        ? `<span class="vasooli-settled-badge">Settled ✅</span>
-                           <button class="vasooli-delete-btn" aria-label="Delete" title="Delete record" data-delete-id="${v.id}">
-                               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
-                           </button>`
+                        ? `<span class="vasooli-settled-badge">Settled ✅</span>`
                         : `<button class="vasooli-settle-btn" data-settle-id="${v.id}">Settle</button>`
                     }
+                    <button class="vasooli-delete-btn" aria-label="Delete entry" title="Delete" data-delete-id="${v.id}">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                    </button>
                 </div>
             </div>
         `).join('');
@@ -1362,11 +1374,92 @@ function updatePersonSuggestions() {
     DOM.personSuggestions.innerHTML = uniqueNames.map(n => `<option value="${n}">`).join('');
 }
 
+// ── Split state ──
+let lendMode = 'individual'; // 'individual' or 'split'
+let splitPeople = [];        // names of people to split with
+
+function setLendMode(mode) {
+    lendMode = mode;
+    // Toggle active button
+    DOM.lendModeToggle?.querySelectorAll('.lend-mode-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.mode === mode);
+    });
+    // Move indicator
+    const indicator = DOM.lendModeToggle?.querySelector('.lend-mode-indicator');
+    if (indicator) indicator.style.transform = mode === 'split' ? 'translateX(100%)' : 'translateX(0)';
+
+    const isSplit = mode === 'split';
+
+    // Show/hide sections
+    if (DOM.lendIndividualPerson) DOM.lendIndividualPerson.style.display = isSplit ? 'none' : '';
+    if (DOM.splitPeopleSection)   DOM.splitPeopleSection.style.display   = isSplit ? '' : 'none';
+    if (DOM.lendAmountLabel)      DOM.lendAmountLabel.textContent        = isSplit ? 'Total Bill Amount' : 'Amount';
+    if (DOM.lendModalSave)        DOM.lendModalSave.textContent          = isSplit ? 'Split & Lend' : 'Lend';
+    if (DOM.lendModalTitle)       DOM.lendModalTitle.textContent         = isSplit ? 'Split Bill' : 'Lend Money';
+
+    updateSplitPreview();
+}
+
+function addSplitPerson(name) {
+    name = name.trim();
+    if (!name) return;
+    if (splitPeople.some(n => n.toLowerCase() === name.toLowerCase())) {
+        showToast(`${name} is already added`, '⚠️');
+        return;
+    }
+    splitPeople.push(name);
+    renderSplitChips();
+    updateSplitPreview();
+    if (DOM.splitPersonInput) { DOM.splitPersonInput.value = ''; DOM.splitPersonInput.focus(); }
+}
+
+function removeSplitPerson(name) {
+    splitPeople = splitPeople.filter(n => n !== name);
+    renderSplitChips();
+    updateSplitPreview();
+}
+
+function renderSplitChips() {
+    if (!DOM.splitChips) return;
+    DOM.splitChips.innerHTML = splitPeople.map(name => `
+        <span class="split-chip">
+            ${name}
+            <button class="split-chip-remove" data-name="${name}" aria-label="Remove">×</button>
+        </span>
+    `).join('');
+}
+
+function updateSplitPreview() {
+    if (!DOM.splitPreview) return;
+    const amount = parseFloat(DOM.lendAmountInput?.value) || 0;
+    if (lendMode !== 'split' || splitPeople.length === 0 || amount <= 0) {
+        DOM.splitPreview.style.display = 'none';
+        return;
+    }
+
+    const includeSelf = DOM.splitIncludeSelf?.checked ?? true;
+    const totalHeads = splitPeople.length + (includeSelf ? 1 : 0);
+    const perPerson = Math.round(amount / totalHeads);
+
+    DOM.splitPreview.style.display = '';
+    DOM.splitPreviewHeader.innerHTML = `<strong>Split: ${totalHeads} people → ₹${perPerson.toLocaleString('en-IN')} each</strong>`;
+    DOM.splitPreviewList.innerHTML = splitPeople.map(name =>
+        `<div class="split-preview-item"><span>${name}</span><span>₹${perPerson.toLocaleString('en-IN')}</span></div>`
+    ).join('') + (includeSelf
+        ? `<div class="split-preview-item split-self"><span>You (already paid ✓)</span><span>₹${perPerson.toLocaleString('en-IN')}</span></div>`
+        : '');
+}
+
 function openLendModal() {
+    // Reset form
     DOM.lendPersonInput.value = '';
     DOM.lendAmountInput.value = '';
     DOM.lendNoteInput.value = '';
     DOM.lendDateInput.value = new Date().toISOString().split('T')[0];
+    splitPeople = [];
+    renderSplitChips();
+    setLendMode('individual');
+    if (DOM.splitIncludeSelf) DOM.splitIncludeSelf.checked = true;
     updatePersonSuggestions();
     DOM.lendModalOverlay.classList.add('active');
     setTimeout(() => DOM.lendPersonInput.focus(), 350);
@@ -1377,13 +1470,6 @@ function closeLendModal() {
 }
 
 function addVasooliEntry() {
-    const person = DOM.lendPersonInput.value.trim();
-    if (!person) {
-        showToast('Enter the person name', '⚠️');
-        DOM.lendPersonInput.focus();
-        return;
-    }
-
     const amount = parseFloat(DOM.lendAmountInput.value);
     if (!amount || amount <= 0) {
         showToast('Please enter a valid amount', '⚠️');
@@ -1391,21 +1477,62 @@ function addVasooliEntry() {
         return;
     }
 
-    const entry = {
-        id: generateId(),
-        person: person,
-        amount: amount,
-        note: DOM.lendNoteInput.value.trim(),
-        date: DOM.lendDateInput.value || new Date().toISOString().split('T')[0],
-        settled: false,
-        createdAt: Date.now(),
-    };
+    const note = DOM.lendNoteInput.value.trim();
+    const date = DOM.lendDateInput.value || new Date().toISOString().split('T')[0];
 
-    state.vasooli.unshift(entry);
-    saveData();
-    closeLendModal();
-    renderAll();
-    showToast(`₹${amount.toLocaleString('en-IN')} lent to ${person}`, '💸');
+    if (lendMode === 'split') {
+        // ── Split Mode ──
+        if (splitPeople.length === 0) {
+            showToast('Add at least one person to split with', '⚠️');
+            DOM.splitPersonInput?.focus();
+            return;
+        }
+        const includeSelf = DOM.splitIncludeSelf?.checked ?? true;
+        const totalHeads = splitPeople.length + (includeSelf ? 1 : 0);
+        const perPerson = Math.round(amount / totalHeads);
+        const splitNote = note ? `[Split] ${note}` : '[Split]';
+
+        splitPeople.forEach(person => {
+            state.vasooli.unshift({
+                id: generateId(),
+                person,
+                amount: perPerson,
+                note: splitNote,
+                date,
+                settled: false,
+                createdAt: Date.now(),
+            });
+        });
+
+        saveData();
+        closeLendModal();
+        renderAll();
+        showToast(`₹${amount.toLocaleString('en-IN')} split between ${totalHeads} people`, '✂️');
+
+    } else {
+        // ── Individual Mode (original behavior) ──
+        const person = DOM.lendPersonInput.value.trim();
+        if (!person) {
+            showToast('Enter the person name', '⚠️');
+            DOM.lendPersonInput.focus();
+            return;
+        }
+
+        state.vasooli.unshift({
+            id: generateId(),
+            person,
+            amount,
+            note,
+            date,
+            settled: false,
+            createdAt: Date.now(),
+        });
+
+        saveData();
+        closeLendModal();
+        renderAll();
+        showToast(`₹${amount.toLocaleString('en-IN')} lent to ${person}`, '💸');
+    }
 }
 
 function settleVasooli(id) {
@@ -1418,12 +1545,24 @@ function settleVasooli(id) {
 }
 
 function deleteVasooli(id) {
-    if (!confirm('Are you sure you want to delete this settled record?')) return;
-    state.vasooli = state.vasooli.filter(v => v.id !== id);
-    saveData();
-    renderAll();
-    showToast('Record deleted', '🗑️');
+    const entryEl = DOM.vasooliPersons?.querySelector(`[data-vasooli-id="${id}"]`);
+    if (entryEl) {
+        // Animate out first, then remove from state
+        entryEl.classList.add('vasooli-entry-exit');
+        setTimeout(() => {
+            state.vasooli = state.vasooli.filter(v => v.id !== id);
+            saveData();
+            renderAll();
+            showToast('Entry deleted', '🗑️');
+        }, 320);
+    } else {
+        state.vasooli = state.vasooli.filter(v => v.id !== id);
+        saveData();
+        renderAll();
+        showToast('Entry deleted', '🗑️');
+    }
 }
+
 
 // ======================== SEGMENTED CONTROL ========================
 function initSegmentedControl(container, callback) {
@@ -1581,6 +1720,37 @@ function initEventListeners() {
     DOM.lendModalOverlay?.addEventListener('click', (e) => {
         if (e.target === DOM.lendModalOverlay) closeLendModal();
     });
+
+    // ── Split Bill controls ──
+    // Mode toggle
+    DOM.lendModeToggle?.querySelectorAll('.lend-mode-btn').forEach(btn => {
+        btn.addEventListener('click', () => setLendMode(btn.dataset.mode));
+    });
+
+    // Add person button
+    DOM.splitAddPerson?.addEventListener('click', () => {
+        addSplitPerson(DOM.splitPersonInput?.value || '');
+    });
+
+    // Enter key on person input
+    DOM.splitPersonInput?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            addSplitPerson(DOM.splitPersonInput.value);
+        }
+    });
+
+    // Remove chip (event delegation)
+    DOM.splitChips?.addEventListener('click', (e) => {
+        const removeBtn = e.target.closest('.split-chip-remove');
+        if (removeBtn) removeSplitPerson(removeBtn.dataset.name);
+    });
+
+    // Live preview updates when amount changes
+    DOM.lendAmountInput?.addEventListener('input', updateSplitPreview);
+
+    // Include self checkbox
+    DOM.splitIncludeSelf?.addEventListener('change', updateSplitPreview);
 
     // Settle buttons + Person card expand (event delegation)
     DOM.vasooliPersons?.addEventListener('click', (e) => {

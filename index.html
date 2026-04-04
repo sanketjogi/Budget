@@ -12,7 +12,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="BudgetFlow">
-    <link rel="apple-touch-icon" href="favicon.svg">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -345,27 +345,58 @@
     <div class="modal-overlay" id="lend-modal-overlay">
         <div class="modal glass-panel" id="lend-modal">
             <div class="modal-header">
-                <h2>Lend Money</h2>
+                <h2 id="lend-modal-title">Lend Money</h2>
                 <button class="modal-close" id="lend-modal-close" aria-label="Close">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                 </button>
             </div>
             <div class="modal-body">
-                <div class="form-group">
+                <!-- Mode Toggle -->
+                <div class="lend-mode-toggle" id="lend-mode-toggle">
+                    <button class="lend-mode-btn active" data-mode="individual">Individual</button>
+                    <button class="lend-mode-btn" data-mode="split">Split Bill</button>
+                    <div class="lend-mode-indicator"></div>
+                </div>
+
+                <!-- Individual Mode: Person Name (hidden in split mode) -->
+                <div class="form-group" id="lend-individual-person">
                     <label for="lend-person-input">Person Name</label>
                     <input type="text" class="glass-input" id="lend-person-input" placeholder="e.g. Rahul" autocomplete="off" list="person-suggestions">
                     <datalist id="person-suggestions"></datalist>
                 </div>
+
+                <!-- Amount (shared by both modes) -->
                 <div class="form-group amount-group">
-                    <label for="lend-amount-input">Amount</label>
+                    <label for="lend-amount-input" id="lend-amount-label">Amount</label>
                     <div class="amount-input-wrapper">
                         <span class="currency-symbol">₹</span>
                         <input type="number" id="lend-amount-input" placeholder="0" min="1" step="1" inputmode="decimal">
                     </div>
                 </div>
+
+                <!-- Split Mode: People Section (hidden in individual mode) -->
+                <div class="form-group split-people-section" id="split-people-section" style="display:none;">
+                    <label>Split with</label>
+                    <div class="split-people-input-row">
+                        <input type="text" class="glass-input" id="split-person-input" placeholder="Type a name & tap +" autocomplete="off">
+                        <button class="btn split-add-btn" id="split-add-person" aria-label="Add person">+</button>
+                    </div>
+                    <div class="split-chips" id="split-chips"></div>
+                    <label class="split-include-self">
+                        <input type="checkbox" id="split-include-self" checked>
+                        <span>Include yourself in the split</span>
+                    </label>
+                </div>
+
+                <!-- Split Preview (hidden until people are added) -->
+                <div class="split-preview glass-card" id="split-preview" style="display:none;">
+                    <div class="split-preview-header" id="split-preview-header"></div>
+                    <div class="split-preview-list" id="split-preview-list"></div>
+                </div>
+
                 <div class="form-group">
                     <label for="lend-note-input">What's it for?</label>
-                    <input type="text" class="glass-input" id="lend-note-input" placeholder="e.g. Lunch money, Emergency, etc.">
+                    <input type="text" class="glass-input" id="lend-note-input" placeholder="e.g. Lunch money, WiFi bill, etc.">
                 </div>
                 <div class="form-group">
                     <label for="lend-date-input">Date</label>

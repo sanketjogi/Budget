@@ -1450,63 +1450,67 @@ input[type="number"] {
 .mobile-nav {
     display: none;
     position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
+    bottom: calc(env(safe-area-inset-bottom, 16px) + 20px);
+    left: 16px;
+    right: 16px;
     z-index: 200;
-    height: var(--mobile-nav-height);
-    border-radius: 20px 20px 0 0;
-    border-bottom: none;
+    height: 64px;
+    border-radius: 100px;
     padding: 0 8px;
     align-items: center;
     justify-content: space-around;
+    background: var(--glass-bg);
+    backdrop-filter: saturate(var(--glass-saturate)) blur(28px);
+    -webkit-backdrop-filter: saturate(var(--glass-saturate)) blur(28px);
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
 }
 
 .mobile-nav-item {
     display: flex;
-    flex-direction: column;
     align-items: center;
-    gap: 4px;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
     background: none;
     border: none;
     color: var(--text-tertiary);
-    font-family: inherit;
-    font-size: 10px;
-    font-weight: 500;
     cursor: pointer;
-    padding: 8px 16px;
-    border-radius: var(--radius-sm);
+    border-radius: 24px;
     transition: all var(--transition-fast);
 }
 
 .mobile-nav-item.active {
-    color: var(--accent);
+    color: var(--text-primary);
+    background: rgba(120, 120, 120, 0.15);
+    width: 64px;
 }
 
 .mobile-nav-item span {
-    white-space: nowrap;
+    display: none;
 }
 
 .fab-item {
-    transform: translateY(-14px);
+    transform: none;
 }
 
 .fab-circle {
-    width: 52px;
-    height: 52px;
-    background: var(--accent);
-    border-radius: 50%;
+    width: auto;
+    height: auto;
+    background: none;
+    border-radius: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #fff;
-    box-shadow: 0 4px 20px rgba(0, 113, 227, 0.4);
+    color: var(--text-tertiary);
+    box-shadow: none;
     transition: all var(--transition-fast);
 }
 
 .fab-item:hover .fab-circle {
     transform: scale(1.1);
-    box-shadow: 0 6px 28px rgba(0, 113, 227, 0.5);
+    box-shadow: none;
+    color: var(--text-primary);
 }
 
 .fab-item:active .fab-circle {
@@ -1702,9 +1706,8 @@ input[type="number"] {
 
     .mobile-nav {
         display: flex;
-        /* Safe area: sit above iPhone home indicator */
-        padding-bottom: env(safe-area-inset-bottom, 0px);
-        height: calc(var(--mobile-nav-height) + env(safe-area-inset-bottom, 0px));
+        padding-bottom: 0px;
+        height: 64px;
     }
 
     /* Stats: keep 2-column layout on phone for consistency with tablet/desktop */

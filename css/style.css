@@ -2682,3 +2682,86 @@ input[type="number"] {
         color: rgba(29, 29, 31, 0.5);
     }
 }
+
+/* ======================== PERSON AUTOCOMPLETE DROPDOWN ======================== */
+#lend-individual-person {
+    position: relative;
+}
+
+.person-autocomplete-dropdown {
+    display: none;
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: calc(100% + 4px);
+    background: var(--panel-bg);
+    backdrop-filter: blur(40px) saturate(180%);
+    -webkit-backdrop-filter: blur(40px) saturate(180%);
+    border: 1px solid var(--panel-border);
+    border-radius: var(--radius-md);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.18), 0 0 1px rgba(0,0,0,0.1);
+    z-index: 9999;
+    overflow: hidden;
+    max-height: 220px;
+    overflow-y: auto;
+    animation: dropdownFadeIn 0.18s var(--ease-smooth);
+}
+
+@keyframes dropdownFadeIn {
+    from { opacity: 0; transform: translateY(-6px) scale(0.98); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.person-autocomplete-dropdown::-webkit-scrollbar { width: 4px; }
+.person-autocomplete-dropdown::-webkit-scrollbar-track { background: transparent; }
+.person-autocomplete-dropdown::-webkit-scrollbar-thumb { background: var(--text-tertiary); border-radius: 4px; }
+
+.pac-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    cursor: pointer;
+    transition: background var(--transition-fast);
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.pac-item:last-child { border-bottom: none; }
+
+.pac-item:hover {
+    background: var(--accent-bg);
+}
+
+.pac-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--purple));
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(0,113,227,0.25);
+}
+
+.pac-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.pac-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.pac-sub {
+    font-size: 11px;
+    color: var(--text-secondary);
+    font-weight: 500;
+}

@@ -319,6 +319,15 @@ function startRealtimeSync(uid) {
 
 // ======================== DATA PERSISTENCE ========================
 const STORAGE_KEY = 'budgetflow_transactions';
+const LAST_DATE_KEY = 'budgetflow_last_date';
+
+// ── Date memory helpers ──
+function saveLastDate(dateStr) {
+    if (dateStr) localStorage.setItem(LAST_DATE_KEY, dateStr);
+}
+function getLastDate() {
+    return localStorage.getItem(LAST_DATE_KEY) || new Date().toISOString().split('T')[0];
+}
 
 function saveData() {
     saveToLocalStorage();
@@ -582,10 +591,10 @@ function openAddModal() {
     addModalType = 'expense';
     addModalCategory = null;
 
-    // Reset form
+    // Reset form — restore last-used date
     DOM.amountInput.value = '';
     DOM.noteInput.value = '';
-    DOM.dateInput.value = new Date().toISOString().split('T')[0];
+    DOM.dateInput.value = getLastDate();
 
     // Reset toggle
     DOM.typeToggle.querySelectorAll('.toggle-btn').forEach(b => {
@@ -1370,8 +1379,75 @@ function renderVasooli() {
 }
 
 function updatePersonSuggestions() {
-    const uniqueNames = [...new Set(state.vasooli.map(v => v.person.trim()))];
-    DOM.personSuggestions.innerHTML = uniqueNames.map(n => `<option value="${n}">`).join('');
+    // Keep the native datalist in sync (hidden, used as fallback)
+    const uniqueNames = [...new Set(state.vasooli.map(v => v.person.trim()))].sort();
+    if (DOM.personSuggestions) {
+        DOM.personSuggestions.innerHTML = uniqueNames.map(n => `<option value="${n}">`).join('');
+    }
+
+    // Build / refresh the custom rich dropdown
+    let dropdown = document.getElementById('person-autocomplete-dropdown');
+    if (!dropdown) {
+        dropdown = document.createElement('div');
+        dropdown.id = 'person-autocomplete-dropdown';
+        dropdown.className = 'person-autocomplete-dropdown';
+        dropdown.setAttribute('role', 'listbox');
+        // Insert after the input's parent form-group
+        DOM.lendPersonInput?.parentElement?.style && (DOM.lendPersonInput.parentElement.style.position = 'relative');
+        DOM.lendPersonInput?.insertAdjacentElement('afterend', dropdown);
+    }
+
+    // Store names on dropdown for filtering
+    dropdown._allNames = uniqueNames;
+
+    function showDropdown(filter) {
+        const filtered = filter
+            ? uniqueNames.filter(n => n.toLowerCase().includes(filter.toLowerCase()))
+            : uniqueNames;
+        if (filtered.length === 0) { dropdown.style.display = 'none'; return; }
+        dropdown.innerHTML = filtered.map(name => {
+            const initial = name.charAt(0).toUpperCase();
+            return `
+                <div class="pac-item" role="option" data-name="${name}">
+                    <div class="pac-avatar">${initial}</div>
+                    <div class="pac-info">
+                        <span class="pac-name">${name}</span>
+                        <span class="pac-sub">${state.vasooli.filter(v => v.person.trim() === name && !v.settled).reduce((s, v) => s + v.amount, 0) > 0
+                            ? '₹' + state.vasooli.filter(v => v.person.trim() === name && !v.settled).reduce((s, v) => s + v.amount, 0).toLocaleString('en-IN') + ' pending'
+                            : 'All settled'}</span>
+                    </div>
+                </div>`;
+        }).join('');
+        dropdown.style.display = 'block';
+    }
+
+    // Attach events once (guard with a flag)
+    if (!DOM.lendPersonInput?._autocompleteReady) {
+        DOM.lendPersonInput._autocompleteReady = true;
+
+        DOM.lendPersonInput.addEventListener('focus', () => {
+            if (dropdown._allNames?.length) showDropdown(DOM.lendPersonInput.value.trim());
+        });
+        DOM.lendPersonInput.addEventListener('input', () => {
+            showDropdown(DOM.lendPersonInput.value.trim());
+        });
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('#lend-individual-person') && !e.target.closest('#person-autocomplete-dropdown')) {
+                dropdown.style.display = 'none';
+            }
+        });
+        dropdown.addEventListener('mousedown', (e) => {
+            const item = e.target.closest('.pac-item');
+            if (!item) return;
+            e.preventDefault();
+            DOM.lendPersonInput.value = item.dataset.name;
+            dropdown.style.display = 'none';
+            DOM.lendPersonInput.dispatchEvent(new Event('input'));
+        });
+    }
+
+    // Reset visibility
+    dropdown.style.display = 'none';
 }
 
 // ── Split state ──
@@ -1455,7 +1531,7 @@ function openLendModal() {
     DOM.lendPersonInput.value = '';
     DOM.lendAmountInput.value = '';
     DOM.lendNoteInput.value = '';
-    DOM.lendDateInput.value = new Date().toISOString().split('T')[0];
+    DOM.lendDateInput.value = getLastDate();
     splitPeople = [];
     renderSplitChips();
     setLendMode('individual');
@@ -1616,6 +1692,10 @@ function initTypeToggle(toggleContainer, pickerContainer, onTypeChange) {
 
 // ======================== EVENT LISTENERS ========================
 function initEventListeners() {
+    // Remember date when user changes it in the Add modal
+    DOM.dateInput.addEventListener('change', (e) => saveLastDate(e.target.value));
+    // Remember date when user changes it in the Lend modal
+    DOM.lendDateInput?.addEventListener('change', (e) => saveLastDate(e.target.value));
     // Navigation — Sidebar
     $$('.nav-item[data-view]').forEach(btn => {
         btn.addEventListener('click', () => switchView(btn.dataset.view));

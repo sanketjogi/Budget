@@ -1223,7 +1223,9 @@ function renderSummaryStats() {
 // ======================== INSIGHTS ========================
 function renderInsights() {
     const monthly = getMonthlyTotals();
+    const allTime = getAllTimeTotals();
     const monthlyExpenses = state.transactions.filter(t => t.type === 'expense' && isCurrentMonth(t.date));
+    const allExpenses = state.transactions.filter(t => t.type === 'expense');
 
     if (state.transactions.length < 2) {
         DOM.insightsContent.innerHTML = '<p class="insight-placeholder">Add some transactions to unlock insights!</p>';
@@ -1231,55 +1233,197 @@ function renderInsights() {
     }
 
     const insights = [];
+    const now = new Date();
+    const dayOfMonth = now.getDate();
 
-    // Savings rate
+    // ─────────────────────────────────────────────
+    // 1. SAVINGS RATE — with aggressive messaging
+    // ─────────────────────────────────────────────
     if (monthly.income > 0) {
         const rate = Math.round(((monthly.income - monthly.expense) / monthly.income) * 100);
         if (rate >= 30) {
-            insights.push({ icon: '🏆', text: `Amazing! You're saving ${rate}% of your income this month.` });
+            insights.push({ icon: '🏆', text: `You're saving ${rate}% of your income. Strong discipline — keep this up!`, severity: 'good' });
         } else if (rate >= 10) {
-            insights.push({ icon: '👍', text: `You're saving ${rate}% of your income. Keep it up!` });
+            insights.push({ icon: '⚡', text: `Only saving ${rate}% of your income. That's barely above survival mode. Aim for 30%+.`, severity: 'warn' });
         } else if (rate >= 0) {
-            insights.push({ icon: '⚡', text: `Your savings rate is ${rate}%. Try to aim for at least 20%.` });
+            insights.push({ icon: '🔥', text: `Savings rate: ${rate}%. You're one unexpected expense away from a financial crisis. Seriously cut back.`, severity: 'danger' });
         } else {
-            insights.push({ icon: '🚨', text: `You're overspending by ${Math.abs(rate)}% this month!` });
+            insights.push({ icon: '💀', text: `You're OVERSPENDING by ${Math.abs(rate)}% this month! You're literally bleeding money. STOP unnecessary spending NOW.`, severity: 'critical' });
         }
     }
 
-    // Top category
-    if (monthlyExpenses.length > 0) {
+    // ─────────────────────────────────────────────
+    // 2. WEEKLY BURN RATE & COUNTDOWN TO ₹0
+    // ─────────────────────────────────────────────
+    if (monthlyExpenses.length > 0 && dayOfMonth >= 3) {
+        const dailyBurn = Math.round(monthly.expense / dayOfMonth);
+        const weeklyBurn = dailyBurn * 7;
+        const balance = allTime.balance;
+
+        insights.push({ icon: '📉', text: `You're burning ₹${weeklyBurn.toLocaleString('en-IN')} per week (₹${dailyBurn.toLocaleString('en-IN')}/day). That's ₹${(dailyBurn * 365).toLocaleString('en-IN')} per year at this pace.`, severity: 'warn' });
+
+        if (balance > 0 && dailyBurn > 0) {
+            const daysLeft = Math.floor(balance / dailyBurn);
+            const weeksLeft = Math.floor(daysLeft / 7);
+            const monthsLeft = (daysLeft / 30).toFixed(1);
+
+            if (daysLeft < 30) {
+                insights.push({ icon: '🚨', text: `⏰ AT THIS RATE, YOUR BALANCE HITS ₹0 IN ${daysLeft} DAYS! That's less than a month. You need to drastically cut spending or you're broke.`, severity: 'critical' });
+            } else if (daysLeft < 90) {
+                insights.push({ icon: '⏳', text: `Your balance will be COMPLETELY GONE in ${monthsLeft} months (${weeksLeft} weeks). Without new income, you're heading for a financial wall.`, severity: 'danger' });
+            } else {
+                insights.push({ icon: '⏳', text: `At current pace, your savings last ${monthsLeft} months. Could be longer if you spend smarter.`, severity: 'warn' });
+            }
+        } else if (balance <= 0) {
+            insights.push({ icon: '💀', text: `Your balance is NEGATIVE. You are in DEBT territory. Every rupee you spend now is digging a deeper hole.`, severity: 'critical' });
+        }
+
+        // Projected monthly expense vs income
+        if (monthly.income > 0) {
+            const projectedMonthlyExpense = Math.round(dailyBurn * 30);
+            if (projectedMonthlyExpense > monthly.income) {
+                const deficit = projectedMonthlyExpense - monthly.income;
+                insights.push({ icon: '🕳️', text: `Projected expenses: ₹${projectedMonthlyExpense.toLocaleString('en-IN')} — that's ₹${deficit.toLocaleString('en-IN')} MORE than your income. You'll end this month in the red.`, severity: 'danger' });
+            }
+        }
+    }
+
+    // ─────────────────────────────────────────────
+    // 3. 🚬💀 VICE TRACKER — Smoking (FEAR MODE)
+    // ─────────────────────────────────────────────
+    const smokingExpense = monthlyExpenses.filter(t => t.category === 'smoking').reduce((s, t) => s + t.amount, 0);
+    const smokingAllTime = allExpenses.filter(t => t.category === 'smoking').reduce((s, t) => s + t.amount, 0);
+
+    if (smokingExpense > 0) {
+        const yearlyProjection = Math.round(smokingExpense * 12);
+        const fiveYearProjection = yearlyProjection * 5;
+        const tenYearProjection = yearlyProjection * 10;
+
+        insights.push({ icon: '🚬', text: `₹${smokingExpense.toLocaleString('en-IN')} burnt on cigarettes this month. That's ₹${yearlyProjection.toLocaleString('en-IN')}/year — literally turning your money into smoke and ash.`, severity: 'critical' });
+        insights.push({ icon: '💀', text: `In 5 years, you'll have BURNT ₹${fiveYearProjection.toLocaleString('en-IN')} on cigarettes. That's a car. In 10 years: ₹${tenYearProjection.toLocaleString('en-IN')} — a house down payment. Gone. Into your lungs.`, severity: 'critical' });
+        insights.push({ icon: '🏥', text: `Every cigarette takes 11 minutes off your life. At this spending rate, you're not just losing money — you're buying cancer, lung disease, and a shorter life. Your future self is begging you to stop.`, severity: 'critical' });
+    }
+    if (smokingAllTime > 0 && smokingExpense === 0) {
+        insights.push({ icon: '🚬', text: `You've spent ₹${smokingAllTime.toLocaleString('en-IN')} total on smoking. Good news: nothing this month. Don't start again — that money is gone forever.`, severity: 'warn' });
+    }
+
+    // ─────────────────────────────────────────────
+    // 4. 🍺💀 VICE TRACKER — Alcohol (FEAR MODE)
+    // ─────────────────────────────────────────────
+    const alcoholExpense = monthlyExpenses.filter(t => t.category === 'alcohol').reduce((s, t) => s + t.amount, 0);
+    const alcoholAllTime = allExpenses.filter(t => t.category === 'alcohol').reduce((s, t) => s + t.amount, 0);
+
+    if (alcoholExpense > 0) {
+        const yearlyProjection = Math.round(alcoholExpense * 12);
+        const fiveYearProjection = yearlyProjection * 5;
+
+        insights.push({ icon: '🍺', text: `₹${alcoholExpense.toLocaleString('en-IN')} wasted on alcohol this month. That's ₹${yearlyProjection.toLocaleString('en-IN')}/year — enough for a premium vacation you'll actually remember.`, severity: 'critical' });
+        insights.push({ icon: '🧠', text: `Alcohol kills brain cells, damages your liver, and wrecks your sleep. You've spent ₹${fiveYearProjection.toLocaleString('en-IN')} projected over 5 years — for what? Hangovers and regret. Invest that money instead.`, severity: 'critical' });
+    }
+    if (alcoholAllTime > 0 && alcoholExpense === 0) {
+        insights.push({ icon: '🍺', text: `₹${alcoholAllTime.toLocaleString('en-IN')} total spent on alcohol historically. Stay clean this month — your wallet and liver thank you.`, severity: 'warn' });
+    }
+
+    // Combined vice total
+    if (smokingExpense > 0 && alcoholExpense > 0) {
+        const viceTotal = smokingExpense + alcoholExpense;
+        const vicePct = monthly.expense > 0 ? Math.round((viceTotal / monthly.expense) * 100) : 0;
+        insights.push({ icon: '☠️', text: `COMBINED VICE DAMAGE: ₹${viceTotal.toLocaleString('en-IN')} this month (${vicePct}% of all spending). Imagine investing that instead — in 10 years that's over ₹${(viceTotal * 12 * 10).toLocaleString('en-IN')} you chose to destroy.`, severity: 'critical' });
+    }
+
+    // ─────────────────────────────────────────────
+    // 5. OVERSPENDING ALERTS (non-vice categories)
+    // ─────────────────────────────────────────────
+    if (monthlyExpenses.length > 0 && monthly.income > 0) {
         const categoryTotals = {};
         monthlyExpenses.forEach(t => {
-            categoryTotals[t.category] = (categoryTotals[t.category] || 0) + t.amount;
+            if (t.category !== 'smoking' && t.category !== 'alcohol') {
+                categoryTotals[t.category] = (categoryTotals[t.category] || 0) + t.amount;
+            }
         });
-        const top = Object.entries(categoryTotals).sort((a, b) => b[1] - a[1])[0];
-        const cat = getCategoryInfo(top[0]);
-        const pct = Math.round((top[1] / monthly.expense) * 100);
-        insights.push({ icon: cat.emoji, text: `${cat.name} is your biggest expense (${pct}% of spending).` });
+
+        const sortedCats = Object.entries(categoryTotals).sort((a, b) => b[1] - a[1]);
+
+        // Flag categories eating more than 25% of income
+        sortedCats.forEach(([catId, amount]) => {
+            const pct = Math.round((amount / monthly.income) * 100);
+            const cat = getCategoryInfo(catId);
+
+            if (catId === 'rent') return; // Rent is essential, skip
+
+            if (pct >= 25) {
+                insights.push({ icon: '🔴', text: `${cat.emoji} ${cat.name} is eating ${pct}% of your income (₹${amount.toLocaleString('en-IN')}). This is DANGEROUS — find ways to cut this down immediately.`, severity: 'danger' });
+            } else if (pct >= 15) {
+                insights.push({ icon: '🟠', text: `${cat.emoji} ${cat.name}: ₹${amount.toLocaleString('en-IN')} (${pct}% of income). That's a lot — can you reduce this by even 20%?`, severity: 'warn' });
+            }
+        });
+
+        // Top spending category insight
+        if (sortedCats.length > 0) {
+            const [topCatId, topAmount] = sortedCats[0];
+            const topCat = getCategoryInfo(topCatId);
+            const topPct = Math.round((topAmount / monthly.expense) * 100);
+            insights.push({ icon: topCat.emoji, text: `${topCat.name} is your #1 expense: ${topPct}% of total spending. Ask yourself — is every rupee spent here truly necessary?`, severity: 'warn' });
+        }
     }
 
-    // Smoking/alcohol warning
-    const smokingExpense = monthlyExpenses.filter(t => t.category === 'smoking').reduce((s, t) => s + t.amount, 0);
-    const alcoholExpense = monthlyExpenses.filter(t => t.category === 'alcohol').reduce((s, t) => s + t.amount, 0);
-    if (smokingExpense > 0) {
-        insights.push({ icon: '🚬', text: `You've spent ${formatCurrency(smokingExpense)} on smoking this month. Consider cutting back!` });
-    }
-    if (alcoholExpense > 0) {
-        insights.push({ icon: '🍺', text: `${formatCurrency(alcoholExpense)} spent on alcohol this month.` });
+    // ─────────────────────────────────────────────
+    // 6. SPENDING TREND — this week vs last week
+    // ─────────────────────────────────────────────
+    const today = new Date();
+    const startOfThisWeek = new Date(today);
+    startOfThisWeek.setDate(today.getDate() - today.getDay());
+    startOfThisWeek.setHours(0, 0, 0, 0);
+
+    const startOfLastWeek = new Date(startOfThisWeek);
+    startOfLastWeek.setDate(startOfLastWeek.getDate() - 7);
+
+    const thisWeekSpend = state.transactions.filter(t => {
+        if (t.type !== 'expense') return false;
+        const d = new Date(t.date + 'T00:00:00');
+        return d >= startOfThisWeek && d <= today;
+    }).reduce((s, t) => s + t.amount, 0);
+
+    const lastWeekSpend = state.transactions.filter(t => {
+        if (t.type !== 'expense') return false;
+        const d = new Date(t.date + 'T00:00:00');
+        return d >= startOfLastWeek && d < startOfThisWeek;
+    }).reduce((s, t) => s + t.amount, 0);
+
+    if (lastWeekSpend > 0 && thisWeekSpend > 0) {
+        const changePct = Math.round(((thisWeekSpend - lastWeekSpend) / lastWeekSpend) * 100);
+        if (changePct > 30) {
+            insights.push({ icon: '📈', text: `This week's spending is UP ${changePct}% vs last week (₹${thisWeekSpend.toLocaleString('en-IN')} vs ₹${lastWeekSpend.toLocaleString('en-IN')}). You're spending MORE, not less. Reverse this now.`, severity: 'danger' });
+        } else if (changePct > 0) {
+            insights.push({ icon: '📊', text: `Spending is up ${changePct}% from last week. Small increases add up — stay alert.`, severity: 'warn' });
+        } else if (changePct < -10) {
+            insights.push({ icon: '✅', text: `Spending is down ${Math.abs(changePct)}% from last week. Good job — keep the discipline going!`, severity: 'good' });
+        }
     }
 
-    // Transaction count
+    // ─────────────────────────────────────────────
+    // 7. MOTIVATIONAL FEAR — general
+    // ─────────────────────────────────────────────
     const txnCount = state.transactions.filter(t => isCurrentMonth(t.date)).length;
-    if (txnCount > 20) {
-        insights.push({ icon: '📊', text: `${txnCount} transactions logged this month. You're on top of it!` });
+    if (txnCount > 30) {
+        insights.push({ icon: '⚠️', text: `${txnCount} transactions this month — that's more than 1/day. Each transaction is money leaving your pocket. Fewer transactions = more savings.`, severity: 'warn' });
     }
 
+    if (monthly.expense > 0 && monthly.income > 0 && monthly.expense > monthly.income * 0.9) {
+        const daysLeft = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate() - dayOfMonth;
+        if (daysLeft > 5) {
+            insights.push({ icon: '🔥', text: `You've already used ${Math.round((monthly.expense / monthly.income) * 100)}% of your income with ${daysLeft} days still left. You're about to overshoot. FREEZE non-essential spending.`, severity: 'critical' });
+        }
+    }
+
+    // Fallback
     if (insights.length === 0) {
-        insights.push({ icon: '💡', text: 'Keep tracking to get more personalized insights!' });
+        insights.push({ icon: '💡', text: 'Keep tracking to unlock aggressive insights that protect your money!', severity: 'info' });
     }
 
+    // Render with severity-based styling
     DOM.insightsContent.innerHTML = insights.map(i => `
-        <div class="insight-item">
+        <div class="insight-item insight-${i.severity || 'info'}">
             <span class="insight-icon">${i.icon}</span>
             <span>${i.text}</span>
         </div>

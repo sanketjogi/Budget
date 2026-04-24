@@ -364,6 +364,111 @@ body {
     padding: 8px 0 0;
 }
 
+/* ======================== SIDEBAR CALCULATOR ======================== */
+.sidebar-calc {
+    padding: 8px 8px 12px;
+    margin: 4px 0;
+    border-top: 1px solid var(--panel-border);
+    border-bottom: 1px solid var(--panel-border);
+}
+
+.calc-display-wrapper {
+    background: var(--input-bg);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    min-height: 54px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: flex-end;
+    overflow: hidden;
+}
+
+.calc-expression {
+    font-size: 11px;
+    color: var(--text-tertiary);
+    min-height: 14px;
+    word-break: break-all;
+    text-align: right;
+    width: 100%;
+}
+
+.calc-display {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: -0.3px;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: right;
+    width: 100%;
+    line-height: 1.2;
+    transition: font-size 0.15s var(--ease-smooth);
+}
+
+.calc-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 5px;
+}
+
+.calc-btn {
+    aspect-ratio: 1;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: var(--input-bg);
+    color: var(--text-primary);
+    font-family: 'Inter', inherit;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.12s var(--ease-smooth);
+    -webkit-tap-highlight-color: transparent;
+}
+.calc-btn:hover {
+    background: var(--input-bg-focus);
+    transform: scale(1.05);
+}
+.calc-btn:active {
+    transform: scale(0.92);
+    background: var(--input-bg-focus);
+}
+
+.calc-btn.calc-fn {
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+.calc-btn.calc-op {
+    color: var(--accent);
+    font-weight: 700;
+    font-size: 17px;
+}
+.calc-btn.calc-eq {
+    background: var(--accent);
+    color: #fff;
+    font-weight: 700;
+    font-size: 18px;
+    grid-column: span 1;
+}
+.calc-btn.calc-eq:hover {
+    background: var(--accent-hover);
+}
+.calc-btn.calc-zero {
+    grid-column: span 2;
+    aspect-ratio: auto;
+}
+
+/* Hide calculator on mobile/tablet */
+@media (max-width: 768px) {
+    .sidebar-calc { display: none; }
+}
+
 .theme-badge {
     display: flex;
     align-items: center;

@@ -248,14 +248,11 @@ async function signOut() {
 
 function onAuthStateChanged(user) {
     if (user) {
-        // Signed in — wipe demo / guest data so real Firestore data loads clean
-        localStorage.removeItem(STORAGE_KEY);
-        localStorage.removeItem(STORAGE_KEY + '_vasooli');
+        // Signed in — DON'T wipe localStorage yet!
+        // Keep it as a safety backup until Firestore confirms data is loaded.
         localStorage.setItem(STORAGE_KEY + '_user_ever_logged_in', '1');
-        state.transactions = [];
-        state.vasooli = [];
 
-        DOM.loginOverlay.style.pointerEvents = 'none'; // don't block app during fade-out
+        DOM.loginOverlay.style.pointerEvents = 'none';
         DOM.loginOverlay.classList.add('hidden');
 
         DOM.userSection.style.display = 'block';
@@ -284,19 +281,55 @@ function onAuthStateChanged(user) {
 }
 
 function startRealtimeSync(uid) {
-    if (!db) return;
+    if (!db) {
+        // Firebase DB not available — fall back to local data
+        loadFromLocalStorage();
+        renderAll();
+        return;
+    }
     if (unsubscribeSnapshot) unsubscribeSnapshot();
+
+    // ── Backup current local data before sync ──
+    // If Firestore has nothing (or fails), we can fall back to this.
+    const localBackup = {
+        transactions: localStorage.getItem(STORAGE_KEY),
+        vasooli: localStorage.getItem(STORAGE_KEY + '_vasooli'),
+    };
+
+    let txnsSynced = false;
+    let vasooliSynced = false;
 
     // Listen for transactions
     const unsubTxns = db.collection('users').doc(uid)
         .collection('transactions')
         .onSnapshot((snapshot) => {
-            state.transactions = snapshot.docs.map(doc => doc.data());
+            const firestoreData = snapshot.docs.map(doc => doc.data());
+
+            // If Firestore returned data, use it
+            if (firestoreData.length > 0) {
+                state.transactions = firestoreData;
+            } else if (!txnsSynced && localBackup.transactions) {
+                // First sync returned empty — keep local data alive
+                try {
+                    const parsed = JSON.parse(localBackup.transactions);
+                    if (parsed.length > 0) {
+                        state.transactions = parsed;
+                        // Push local data UP to Firestore so it's not lost
+                        _pushTransactionsToFirestore(uid, parsed);
+                    }
+                } catch(e) { /* ignore parse errors */ }
+            }
+
+            txnsSynced = true;
             saveToLocalStorage();
             renderAll();
         }, (error) => {
-            console.error('Firestore sync error:', error);
-            loadFromLocalStorage();
+            console.error('Firestore transactions sync error:', error);
+            showToast('Cloud sync failed — using local data', '⚠️');
+            // Restore from local backup
+            if (localBackup.transactions) {
+                try { state.transactions = JSON.parse(localBackup.transactions); } catch(e) {}
+            }
             renderAll();
         });
 
@@ -304,17 +337,66 @@ function startRealtimeSync(uid) {
     const unsubVasooli = db.collection('users').doc(uid)
         .collection('vasooli')
         .onSnapshot((snapshot) => {
-            state.vasooli = snapshot.docs.map(doc => doc.data());
+            const firestoreData = snapshot.docs.map(doc => doc.data());
+
+            if (firestoreData.length > 0) {
+                state.vasooli = firestoreData;
+            } else if (!vasooliSynced && localBackup.vasooli) {
+                try {
+                    const parsed = JSON.parse(localBackup.vasooli);
+                    if (parsed.length > 0) {
+                        state.vasooli = parsed;
+                        _pushVasooliToFirestore(uid, parsed);
+                    }
+                } catch(e) {}
+            }
+
+            vasooliSynced = true;
             saveToLocalStorage();
             renderAll();
         }, (error) => {
             console.error('Vasooli sync error:', error);
+            if (localBackup.vasooli) {
+                try { state.vasooli = JSON.parse(localBackup.vasooli); } catch(e) {}
+            }
+            renderAll();
         });
 
     unsubscribeSnapshot = () => {
         unsubTxns();
         unsubVasooli();
     };
+}
+
+// ── Push local data to Firestore (recovery helper) ──
+async function _pushTransactionsToFirestore(uid, transactions) {
+    if (!db || !uid || !transactions.length) return;
+    try {
+        const batch = db.batch();
+        const ref = db.collection('users').doc(uid).collection('transactions');
+        transactions.forEach(txn => {
+            batch.set(ref.doc(txn.id), txn);
+        });
+        await batch.commit();
+        console.log(`✅ Pushed ${transactions.length} transactions to Firestore`);
+    } catch(e) {
+        console.warn('Failed to push transactions to Firestore:', e);
+    }
+}
+
+async function _pushVasooliToFirestore(uid, vasooli) {
+    if (!db || !uid || !vasooli.length) return;
+    try {
+        const batch = db.batch();
+        const ref = db.collection('users').doc(uid).collection('vasooli');
+        vasooli.forEach(v => {
+            batch.set(ref.doc(v.id), v);
+        });
+        await batch.commit();
+        console.log(`✅ Pushed ${vasooli.length} vasooli entries to Firestore`);
+    } catch(e) {
+        console.warn('Failed to push vasooli to Firestore:', e);
+    }
 }
 
 // ======================== DATA PERSISTENCE ========================
@@ -688,6 +770,9 @@ function addTransaction() {
     closeAddModal();
     renderAll();
     showToast('Transaction added!', '✨');
+
+    // Integration bridge — notify HabitForge of smoking/alcohol transactions
+    notifyHabitForgeBridge(txn);
 }
 
 function updateTransaction() {
@@ -2140,4 +2225,192 @@ function init() {
     }
 }
 
-document.addEventListener('DOMContentLoaded', init);
+// ======================== SIDEBAR CALCULATOR ========================
+function initCalculator() {
+    const calcDisplay = document.getElementById('calc-display');
+    const calcExpression = document.getElementById('calc-expression');
+    const calcGrid = document.querySelector('.calc-grid');
+    if (!calcDisplay || !calcGrid) return; // not present (mobile)
+
+    let currentInput = '0';
+    let expression = '';
+    let operator = null;
+    let previousValue = null;
+    let shouldResetInput = false;
+
+    function updateDisplay() {
+        // Auto-shrink font for long numbers
+        const len = currentInput.length;
+        if (len > 12) calcDisplay.style.fontSize = '14px';
+        else if (len > 9) calcDisplay.style.fontSize = '17px';
+        else calcDisplay.style.fontSize = '22px';
+        calcDisplay.textContent = currentInput;
+        calcExpression.textContent = expression;
+    }
+
+    function formatNumber(num) {
+        if (isNaN(num) || !isFinite(num)) return 'Error';
+        // Limit decimals
+        const str = parseFloat(num.toFixed(10)).toString();
+        return str.length > 15 ? parseFloat(num).toExponential(4) : str;
+    }
+
+    function calculate(a, op, b) {
+        switch (op) {
+            case '+': return a + b;
+            case '-': return a - b;
+            case '*': return a * b;
+            case '/': return b !== 0 ? a / b : NaN;
+            default: return b;
+        }
+    }
+
+    const opSymbols = { '+': '+', '-': '−', '*': '×', '/': '÷' };
+
+    calcGrid.addEventListener('click', (e) => {
+        const btn = e.target.closest('.calc-btn');
+        if (!btn) return;
+        const val = btn.dataset.calc;
+
+        // Number keys
+        if (/^[0-9]$/.test(val)) {
+            if (shouldResetInput || currentInput === '0') {
+                currentInput = val;
+                shouldResetInput = false;
+            } else {
+                if (currentInput.length >= 15) return;
+                currentInput += val;
+            }
+            updateDisplay();
+            return;
+        }
+
+        // Decimal
+        if (val === '.') {
+            if (shouldResetInput) { currentInput = '0.'; shouldResetInput = false; }
+            else if (!currentInput.includes('.')) currentInput += '.';
+            updateDisplay();
+            return;
+        }
+
+        // Clear
+        if (val === 'clear') {
+            currentInput = '0';
+            expression = '';
+            operator = null;
+            previousValue = null;
+            shouldResetInput = false;
+            updateDisplay();
+            return;
+        }
+
+        // Backspace
+        if (val === 'backspace') {
+            if (shouldResetInput) return;
+            currentInput = currentInput.length > 1 ? currentInput.slice(0, -1) : '0';
+            updateDisplay();
+            return;
+        }
+
+        // Percent
+        if (val === 'percent') {
+            const num = parseFloat(currentInput);
+            if (!isNaN(num)) {
+                currentInput = formatNumber(num / 100);
+                updateDisplay();
+            }
+            return;
+        }
+
+        // Operators
+        if (['+', '-', '*', '/'].includes(val)) {
+            const current = parseFloat(currentInput);
+            if (previousValue !== null && operator && !shouldResetInput) {
+                const result = calculate(previousValue, operator, current);
+                previousValue = result;
+                currentInput = formatNumber(result);
+            } else {
+                previousValue = current;
+            }
+            operator = val;
+            expression = formatNumber(previousValue) + ' ' + (opSymbols[val] || val);
+            shouldResetInput = true;
+            updateDisplay();
+            return;
+        }
+
+        // Equals
+        if (val === '=') {
+            if (operator && previousValue !== null) {
+                const current = parseFloat(currentInput);
+                const result = calculate(previousValue, operator, current);
+                expression = formatNumber(previousValue) + ' ' + (opSymbols[operator] || operator) + ' ' + formatNumber(current) + ' =';
+                currentInput = formatNumber(result);
+                previousValue = null;
+                operator = null;
+                shouldResetInput = true;
+                updateDisplay();
+            }
+            return;
+        }
+    });
+
+    // Keyboard support when sidebar calc is visible
+    document.addEventListener('keydown', (e) => {
+        if (!calcDisplay.offsetParent) return; // hidden
+        // Only capture if not inside an input/textarea
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+        const key = e.key;
+        if (/^[0-9.]$/.test(key)) {
+            const btn = calcGrid.querySelector(`[data-calc="${key}"]`);
+            if (btn) btn.click();
+        } else if (key === '+' || key === '-' || key === '*' || key === '/') {
+            const btn = calcGrid.querySelector(`[data-calc="${key}"]`);
+            if (btn) btn.click();
+        } else if (key === 'Enter' || key === '=') {
+            const btn = calcGrid.querySelector('[data-calc="="]');
+            if (btn) btn.click();
+        } else if (key === 'Backspace') {
+            const btn = calcGrid.querySelector('[data-calc="backspace"]');
+            if (btn) btn.click();
+        } else if (key === 'Escape' || key === 'c' || key === 'C') {
+            const btn = calcGrid.querySelector('[data-calc="clear"]');
+            if (btn) btn.click();
+        } else if (key === '%') {
+            const btn = calcGrid.querySelector('[data-calc="percent"]');
+            if (btn) btn.click();
+        }
+    });
+
+    updateDisplay();
+}
+
+// ======================== HABITFORGE INTEGRATION BRIDGE ========================
+const BRIDGE_CATEGORIES = ['smoking', 'alcohol'];
+
+function notifyHabitForgeBridge(txn) {
+    if (!txn || txn.type !== 'expense') return;
+    if (!BRIDGE_CATEGORIES.includes(txn.category)) return;
+    try {
+        const bridgeEvent = {
+            source: 'budgetflow',
+            event: 'transaction_added',
+            timestamp: Date.now(),
+            data: {
+                category: txn.category,
+                amount: txn.amount,
+                date: txn.date,
+                note: txn.note || '',
+            }
+        };
+        localStorage.setItem('antigravity_bridge', JSON.stringify(bridgeEvent));
+    } catch (e) {
+        console.warn('Bridge write error:', e);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    init();
+    initCalculator();
+});

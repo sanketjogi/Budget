@@ -12,7 +12,7 @@ A premium, Apple-inspired budget tracker built with vanilla HTML, CSS & JavaScri
 - **Interactive Charts** — Spending breakdown (donut), monthly trends (bar), category comparison
 - **Transaction History** — Full searchable, filterable history grouped by date
 - **Smart Insights** — Personalized tips based on your spending patterns
-- **14 Expense Categories** — Including 🚬 Smoking & 🍺 Alcohol tracking
+- **15 Expense Categories** — Comprehensive tracking for all your daily spending needs
 - **Mobile Responsive** — Beautiful bottom navigation bar on smaller screens
 - **Local Storage** — Data persists across sessions, no server needed
 - **Toast Notifications** — Smooth feedback on every action

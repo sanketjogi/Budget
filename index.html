@@ -16,7 +16,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/style.css?v=3">
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
@@ -267,8 +267,8 @@
                 <div class="analytics-grid">
                     <div class="glass-card chart-card wide-card" id="trend-chart-card">
                         <div class="card-header">
-                            <h3>Monthly Trend</h3>
-                            <span class="card-badge">Last 6 Months</span>
+                            <h3>Daily Trend</h3>
+                            <span class="card-badge">This Month</span>
                         </div>
                         <div class="chart-container chart-container-wide">
                             <canvas id="trend-chart"></canvas>
@@ -277,6 +277,20 @@
                                 <p>Not enough data for trends</p>
                             </div>
                         </div>
+                    </div>
+
+                    <div class="glass-card wide-card" id="finance-calendar-card">
+                        <div class="card-header">
+                            <h3>📅 Finance Calendar</h3>
+                            <span class="card-badge">This Month</span>
+                        </div>
+                        <div class="fc-legend">
+                            <span class="fc-legend-item"><span class="fc-dot fc-dot-green"></span>&lt; ₹300</span>
+                            <span class="fc-legend-item"><span class="fc-dot fc-dot-yellow"></span>₹300–500</span>
+                            <span class="fc-legend-item"><span class="fc-dot fc-dot-red"></span>&gt; ₹500</span>
+                        </div>
+                        <div class="finance-calendar-grid" id="finance-calendar-grid"></div>
+                        <div class="fc-month-summary" id="fc-month-summary"></div>
                     </div>
 
                     <div class="glass-card" id="top-categories-card">
@@ -291,18 +305,6 @@
                         </div>
                     </div>
 
-                    <div class="glass-card chart-card" id="category-chart-card">
-                        <div class="card-header">
-                            <h3>Category Breakdown</h3>
-                        </div>
-                        <div class="chart-container">
-                            <canvas id="category-bar-chart"></canvas>
-                            <div class="chart-empty" id="category-chart-empty">
-                                <span class="empty-icon">📊</span>
-                                <p>No data available</p>
-                            </div>
-                        </div>
-                    </div>
 
                     <div class="glass-card" id="summary-card">
                         <div class="card-header">

@@ -26,6 +26,7 @@ const CATEGORIES = {
         { id: 'utilities',     name: 'Utilities',     emoji: '⚡' },
         { id: 'smoking',       name: 'Smoking',       emoji: '🚬' },
         { id: 'alcohol',       name: 'Alcohol',       emoji: '🍺' },
+        { id: 'grooming',      name: 'Grooming',      emoji: '💈' },
         { id: 'savings',       name: 'Savings',       emoji: '🏦' },
         { id: 'other-expense', name: 'Other',         emoji: '📦' },
     ],
@@ -39,7 +40,7 @@ const CATEGORY_COLORS = {
     'transport': '#0a84ff', 'entertainment': '#ff375f', 'shopping': '#bf5af2',
     'health': '#ff453a', 'education': '#64d2ff', 'subscriptions': '#ff9f0a',
     'utilities': '#ffd60a', 'smoking': '#8e8e93', 'alcohol': '#ff9500',
-    'savings': '#34c759', 'other-expense': '#aeaeb2',
+    'grooming': '#e040fb', 'savings': '#34c759', 'other-expense': '#aeaeb2',
 };
 
 // ======================== STATE ========================
@@ -289,6 +290,9 @@ function startRealtimeSync(uid) {
     }
     if (unsubscribeSnapshot) unsubscribeSnapshot();
 
+    // Check if the current local data is purely untouched demo data
+    const isDemoData = localStorage.getItem(STORAGE_KEY + '_is_demo') === 'true';
+
     // ── Backup current local data before sync ──
     // If Firestore has nothing (or fails), we can fall back to this.
     const localBackup = {
@@ -309,15 +313,20 @@ function startRealtimeSync(uid) {
             if (firestoreData.length > 0) {
                 state.transactions = firestoreData;
             } else if (!txnsSynced && localBackup.transactions) {
-                // First sync returned empty — keep local data alive
-                try {
-                    const parsed = JSON.parse(localBackup.transactions);
-                    if (parsed.length > 0) {
-                        state.transactions = parsed;
-                        // Push local data UP to Firestore so it's not lost
-                        _pushTransactionsToFirestore(uid, parsed);
-                    }
-                } catch(e) { /* ignore parse errors */ }
+                if (isDemoData) {
+                    // It's a new account and we only have untouched demo data locally. Wipe it.
+                    state.transactions = [];
+                } else {
+                    // First sync returned empty — keep local data alive
+                    try {
+                        const parsed = JSON.parse(localBackup.transactions);
+                        if (parsed.length > 0) {
+                            state.transactions = parsed;
+                            // Push local data UP to Firestore so it's not lost
+                            _pushTransactionsToFirestore(uid, parsed);
+                        }
+                    } catch(e) { /* ignore parse errors */ }
+                }
             }
 
             txnsSynced = true;
@@ -342,13 +351,17 @@ function startRealtimeSync(uid) {
             if (firestoreData.length > 0) {
                 state.vasooli = firestoreData;
             } else if (!vasooliSynced && localBackup.vasooli) {
-                try {
-                    const parsed = JSON.parse(localBackup.vasooli);
-                    if (parsed.length > 0) {
-                        state.vasooli = parsed;
-                        _pushVasooliToFirestore(uid, parsed);
-                    }
-                } catch(e) {}
+                if (isDemoData) {
+                    state.vasooli = [];
+                } else {
+                    try {
+                        const parsed = JSON.parse(localBackup.vasooli);
+                        if (parsed.length > 0) {
+                            state.vasooli = parsed;
+                            _pushVasooliToFirestore(uid, parsed);
+                        }
+                    } catch(e) {}
+                }
             }
 
             vasooliSynced = true;
@@ -420,6 +433,9 @@ function saveToLocalStorage() {
     try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(state.transactions));
         localStorage.setItem(STORAGE_KEY + '_vasooli', JSON.stringify(state.vasooli));
+        
+        // If the user or app saves data normally, it is no longer untouched demo data
+        localStorage.removeItem(STORAGE_KEY + '_is_demo');
     } catch (e) {
         console.warn('Storage error:', e);
     }
@@ -1044,6 +1060,7 @@ function populateCategoryFilter() {
 // ======================== ANALYTICS VIEW ========================
 function renderAnalytics() {
     renderTrendChart();
+    renderFinanceCalendar();
     renderCategoryBarChart();
     renderTopCategories();
     renderSummaryStats();
@@ -1051,22 +1068,22 @@ function renderAnalytics() {
 
 function renderTrendChart() {
     const now = new Date();
-    const months = [];
-    for (let i = 5; i >= 0; i--) {
-        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        months.push({ year: d.getFullYear(), month: d.getMonth(), label: d.toLocaleDateString('en-IN', { month: 'short' }) });
-    }
+    const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    const labels = [];
+    const expenseData = [];
+    const incomeData = [];
+    const cm = getCurrentMonth();
 
-    const incomeData = months.map(m =>
-        state.transactions
-            .filter(t => t.type === 'income' && new Date(t.date + 'T00:00:00').getFullYear() === m.year && new Date(t.date + 'T00:00:00').getMonth() === m.month)
-            .reduce((s, t) => s + t.amount, 0)
-    );
-    const expenseData = months.map(m =>
-        state.transactions
-            .filter(t => t.type === 'expense' && new Date(t.date + 'T00:00:00').getFullYear() === m.year && new Date(t.date + 'T00:00:00').getMonth() === m.month)
-            .reduce((s, t) => s + t.amount, 0)
-    );
+    for (let day = 1; day <= daysInMonth; day++) {
+        labels.push(day);
+        const dateStr = `${cm.year}-${String(cm.month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        expenseData.push(
+            state.transactions.filter(t => t.type === 'expense' && t.date === dateStr).reduce((s, t) => s + t.amount, 0)
+        );
+        incomeData.push(
+            state.transactions.filter(t => t.type === 'income' && t.date === dateStr).reduce((s, t) => s + t.amount, 0)
+        );
+    }
 
     const hasData = [...incomeData, ...expenseData].some(v => v > 0);
     DOM.trendChartEmpty.classList.toggle('hidden', hasData);
@@ -1080,33 +1097,44 @@ function renderTrendChart() {
 
     if (trendChart) trendChart.destroy();
     trendChart = new Chart(DOM.trendChart, {
-        type: 'bar',
+        type: 'line',
         data: {
-            labels: months.map(m => m.label),
+            labels,
             datasets: [
-                {
-                    label: 'Income',
-                    data: incomeData,
-                    backgroundColor: isDark ? 'rgba(48, 209, 88, 0.7)' : 'rgba(52, 199, 89, 0.7)',
-                    borderRadius: 8,
-                    borderSkipped: false,
-                    barPercentage: 0.6,
-                    categoryPercentage: 0.7,
-                },
                 {
                     label: 'Expenses',
                     data: expenseData,
-                    backgroundColor: isDark ? 'rgba(255, 69, 58, 0.7)' : 'rgba(255, 59, 48, 0.7)',
-                    borderRadius: 8,
-                    borderSkipped: false,
-                    barPercentage: 0.6,
-                    categoryPercentage: 0.7,
+                    borderColor: isDark ? '#ff453a' : '#ff3b30',
+                    backgroundColor: isDark ? 'rgba(255, 69, 58, 0.08)' : 'rgba(255, 59, 48, 0.08)',
+                    fill: true,
+                    tension: 0.35,
+                    pointRadius: 4,
+                    pointHoverRadius: 7,
+                    pointBackgroundColor: isDark ? '#ff453a' : '#ff3b30',
+                    pointBorderColor: isDark ? '#1c1c1e' : '#ffffff',
+                    pointBorderWidth: 2,
+                    borderWidth: 2.5,
+                },
+                {
+                    label: 'Income',
+                    data: incomeData,
+                    borderColor: isDark ? '#30d158' : '#34c759',
+                    backgroundColor: isDark ? 'rgba(48, 209, 88, 0.08)' : 'rgba(52, 199, 89, 0.08)',
+                    fill: true,
+                    tension: 0.35,
+                    pointRadius: 4,
+                    pointHoverRadius: 7,
+                    pointBackgroundColor: isDark ? '#30d158' : '#34c759',
+                    pointBorderColor: isDark ? '#1c1c1e' : '#ffffff',
+                    pointBorderWidth: 2,
+                    borderWidth: 2.5,
                 },
             ],
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
             plugins: {
                 legend: {
                     display: true,
@@ -1132,6 +1160,7 @@ function renderTrendChart() {
                     titleFont: { family: 'Inter', weight: '600' },
                     bodyFont: { family: 'Inter' },
                     callbacks: {
+                        title: (items) => `Day ${items[0].label}`,
                         label: (ctx) => ` ${ctx.dataset.label}: ${formatCurrency(ctx.raw)}`,
                     },
                 },
@@ -1140,8 +1169,10 @@ function renderTrendChart() {
                 x: {
                     grid: { display: false },
                     ticks: {
-                        font: { family: 'Inter', size: 12, weight: '500' },
+                        font: { family: 'Inter', size: 10, weight: '500' },
                         color: isDark ? '#636366' : '#aeaeb2',
+                        maxTicksLimit: 10,
+                        callback: (val, idx) => (idx + 1) % 5 === 0 || idx === 0 ? idx + 1 : '',
                     },
                 },
                 y: {
@@ -1149,14 +1180,78 @@ function renderTrendChart() {
                     ticks: {
                         font: { family: 'Inter', size: 11 },
                         color: isDark ? '#636366' : '#aeaeb2',
-                        callback: (v) => formatCurrency(v),
+                        callback: (v) => v >= 1000 ? '₹' + (v / 1000).toFixed(0) + 'k' : '₹' + v,
                     },
                     border: { display: false },
+                    beginAtZero: true,
                 },
             },
             animation: { duration: 800, easing: 'easeOutQuart' },
         },
     });
+}
+
+// ======================== FINANCE CALENDAR ========================
+function renderFinanceCalendar() {
+    const container = document.getElementById('finance-calendar-grid');
+    if (!container) return;
+
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const firstDayOfWeek = new Date(year, month, 1).getDay(); // 0=Sun
+    const today = now.getDate();
+
+    // Get daily totals
+    const dailyTotals = {};
+    state.transactions.forEach(t => {
+        if (t.type !== 'expense') return;
+        const d = new Date(t.date + 'T00:00:00');
+        if (d.getFullYear() === year && d.getMonth() === month) {
+            const day = d.getDate();
+            dailyTotals[day] = (dailyTotals[day] || 0) + t.amount;
+        }
+    });
+
+    let html = '';
+
+    // Day-of-week headers
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    dayNames.forEach(d => {
+        html += `<div class="fc-header-cell">${d}</div>`;
+    });
+
+    // Empty cells for padding before day 1
+    for (let i = 0; i < firstDayOfWeek; i++) {
+        html += '<div class="fc-cell fc-empty"></div>';
+    }
+
+    // Day cells
+    for (let day = 1; day <= daysInMonth; day++) {
+        const amount = dailyTotals[day] || 0;
+        let colorClass = 'fc-none';
+        if (amount > 0 && amount < 300) colorClass = 'fc-green';
+        else if (amount >= 300 && amount <= 500) colorClass = 'fc-yellow';
+        else if (amount > 500) colorClass = 'fc-red';
+
+        const isToday = day === today ? ' fc-today' : '';
+        const isFuture = day > today ? ' fc-future' : '';
+        const amountLabel = amount > 0 ? `<span class="fc-amount">₹${amount >= 1000 ? (amount / 1000).toFixed(1) + 'k' : amount}</span>` : '';
+
+        html += `<div class="fc-cell ${colorClass}${isToday}${isFuture}"><span class="fc-day">${day}</span>${amountLabel}</div>`;
+    }
+
+    container.innerHTML = html;
+
+    // Update month total stats
+    const monthExpenseTotal = Object.values(dailyTotals).reduce((s, v) => s + v, 0);
+    const daysWithSpending = Object.keys(dailyTotals).length;
+    const avgDaily = daysWithSpending > 0 ? Math.round(monthExpenseTotal / daysWithSpending) : 0;
+    const el = document.getElementById('fc-month-summary');
+    if (el) {
+        el.innerHTML = `<span>Total: <strong>₹${monthExpenseTotal.toLocaleString('en-IN')}</strong></span><span>Avg/day: <strong>₹${avgDaily.toLocaleString('en-IN')}</strong></span><span>Active days: <strong>${daysWithSpending}</strong></span>`;
+    }
 }
 
 function renderCategoryBarChart() {
@@ -2182,6 +2277,9 @@ function seedDemoData() {
     ];
 
     saveToLocalStorage();
+    
+    // Mark this session data specifically as demo data
+    localStorage.setItem(STORAGE_KEY + '_is_demo', 'true');
 }
 
 // ======================== INIT ========================
@@ -2223,6 +2321,18 @@ function init() {
         DOM.guestSection.style.display = 'none';
         hideSplash();
     }
+
+    // Add ambient mouse tracking for glow effect
+    document.addEventListener('mousemove', (e) => {
+        document.body.style.setProperty('--mouse-x', `${e.clientX}px`);
+        document.body.style.setProperty('--mouse-y', `${e.clientY}px`);
+        if (!document.body.classList.contains('mouse-moving')) {
+            document.body.classList.add('mouse-moving');
+        }
+    });
+    document.addEventListener('mouseleave', () => {
+        document.body.classList.remove('mouse-moving');
+    });
 }
 
 // ======================== SIDEBAR CALCULATOR ========================

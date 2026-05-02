@@ -52,6 +52,8 @@ let state = {
     categoryFilter: 'all',
     searchQuery: '',
     editingId: null,
+    analyticsMonth: new Date().getMonth(),
+    analyticsYear: new Date().getFullYear(),
 };
 
 // Chart instances
@@ -1059,6 +1061,20 @@ function populateCategoryFilter() {
 
 // ======================== ANALYTICS VIEW ========================
 function renderAnalytics() {
+    // Update month picker label
+    const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    const label = document.getElementById('analytics-month-label');
+    if (label) label.textContent = `${monthNames[state.analyticsMonth]} ${state.analyticsYear}`;
+
+    // Disable next button if on current month
+    const now = new Date();
+    const nextBtn = document.getElementById('analytics-next-month');
+    if (nextBtn) {
+        const isCurrentMonth = state.analyticsYear === now.getFullYear() && state.analyticsMonth === now.getMonth();
+        nextBtn.disabled = isCurrentMonth;
+        nextBtn.style.opacity = isCurrentMonth ? '0.3' : '1';
+    }
+
     renderTrendChart();
     renderFinanceCalendar();
     renderCategoryBarChart();
@@ -1066,17 +1082,46 @@ function renderAnalytics() {
     renderSummaryStats();
 }
 
-function renderTrendChart() {
+function changeAnalyticsMonth(delta) {
+    let m = state.analyticsMonth + delta;
+    let y = state.analyticsYear;
+    if (m < 0) { m = 11; y--; }
+    if (m > 11) { m = 0; y++; }
+    // Don't go past current month
     const now = new Date();
-    const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    if (y > now.getFullYear() || (y === now.getFullYear() && m > now.getMonth())) return;
+    state.analyticsMonth = m;
+    state.analyticsYear = y;
+    renderAnalytics();
+}
+
+function isSelectedMonth(dateStr) {
+    const d = new Date(dateStr + 'T00:00:00');
+    return d.getFullYear() === state.analyticsYear && d.getMonth() === state.analyticsMonth;
+}
+
+function getSelectedMonthTotals() {
+    let income = 0, expense = 0;
+    state.transactions.forEach(t => {
+        if (isSelectedMonth(t.date)) {
+            if (t.type === 'income') income += t.amount;
+            else expense += t.amount;
+        }
+    });
+    return { income, expense, balance: income - expense };
+}
+
+function renderTrendChart() {
+    const year = state.analyticsYear;
+    const month = state.analyticsMonth;
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
     const labels = [];
     const expenseData = [];
     const incomeData = [];
-    const cm = getCurrentMonth();
 
     for (let day = 1; day <= daysInMonth; day++) {
         labels.push(day);
-        const dateStr = `${cm.year}-${String(cm.month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
         expenseData.push(
             state.transactions.filter(t => t.type === 'expense' && t.date === dateStr).reduce((s, t) => s + t.amount, 0)
         );
@@ -1196,12 +1241,13 @@ function renderFinanceCalendar() {
     const container = document.getElementById('finance-calendar-grid');
     if (!container) return;
 
+    const year = state.analyticsYear;
+    const month = state.analyticsMonth;
     const now = new Date();
-    const year = now.getFullYear();
-    const month = now.getMonth();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     const firstDayOfWeek = new Date(year, month, 1).getDay(); // 0=Sun
-    const today = now.getDate();
+    const isCurrentMonth = year === now.getFullYear() && month === now.getMonth();
+    const today = isCurrentMonth ? now.getDate() : -1;
 
     // Get daily totals
     const dailyTotals = {};
@@ -1255,7 +1301,7 @@ function renderFinanceCalendar() {
 }
 
 function renderCategoryBarChart() {
-    const expenses = state.transactions.filter(t => t.type === 'expense' && isCurrentMonth(t.date));
+    const expenses = state.transactions.filter(t => t.type === 'expense' && isSelectedMonth(t.date));
 
     if (expenses.length === 0) {
         DOM.categoryChartEmpty.classList.remove('hidden');
@@ -1334,7 +1380,7 @@ function renderCategoryBarChart() {
 }
 
 function renderTopCategories() {
-    const expenses = state.transactions.filter(t => t.type === 'expense' && isCurrentMonth(t.date));
+    const expenses = state.transactions.filter(t => t.type === 'expense' && isSelectedMonth(t.date));
 
     if (expenses.length === 0) {
         DOM.topCategories.innerHTML = '<div class="empty-state-small"><p>No expense data yet</p></div>';
@@ -1368,13 +1414,15 @@ function renderTopCategories() {
 }
 
 function renderSummaryStats() {
-    const monthly = getMonthlyTotals();
-    const monthlyExpenses = state.transactions.filter(t => t.type === 'expense' && isCurrentMonth(t.date));
-    const monthlyAll = state.transactions.filter(t => isCurrentMonth(t.date));
+    const monthly = getSelectedMonthTotals();
+    const monthlyExpenses = state.transactions.filter(t => t.type === 'expense' && isSelectedMonth(t.date));
+    const monthlyAll = state.transactions.filter(t => isSelectedMonth(t.date));
 
     // Avg daily spending
     const now = new Date();
-    const dayOfMonth = now.getDate();
+    const isCurrentMonth = state.analyticsYear === now.getFullYear() && state.analyticsMonth === now.getMonth();
+    const daysInMonth = new Date(state.analyticsYear, state.analyticsMonth + 1, 0).getDate();
+    const dayOfMonth = isCurrentMonth ? now.getDate() : daysInMonth;
     const avgDaily = monthlyExpenses.length > 0 ? Math.round(monthly.expense / dayOfMonth) : 0;
     DOM.avgDaily.textContent = formatCurrency(avgDaily);
 
@@ -2029,6 +2077,10 @@ function initEventListeners() {
     $$('.mobile-nav-item[data-view]').forEach(btn => {
         btn.addEventListener('click', () => switchView(btn.dataset.view));
     });
+
+    // Analytics month picker
+    document.getElementById('analytics-prev-month')?.addEventListener('click', () => changeAnalyticsMonth(-1));
+    document.getElementById('analytics-next-month')?.addEventListener('click', () => changeAnalyticsMonth(1));
 
     // "View All" links
     $$('.link-btn[data-view]').forEach(btn => {

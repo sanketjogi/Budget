@@ -3129,3 +3129,137 @@ input[type="number"] {
     user-select: none;
     transition: opacity 0.15s ease;
 }
+
+/* ======================== VASOOLI PARTIAL PAYMENTS ======================== */
+.vasooli-progress-bar {
+    height: 6px;
+    background: var(--input-bg);
+    border-radius: 3px;
+    overflow: hidden;
+    width: 100%;
+}
+.vasooli-progress-bar.person-bar { height: 5px; }
+.vasooli-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--green), #2ecc71);
+    border-radius: 3px;
+    transition: width 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    min-width: 0;
+}
+.vasooli-person-progress {
+    padding: 6px 16px 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.vasooli-progress-pct {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--green);
+    white-space: nowrap;
+}
+.vasooli-entry-progress {
+    width: 100%;
+    padding-top: 8px;
+    margin-top: 6px;
+    border-top: 1px solid var(--glass-border);
+}
+.vasooli-progress-labels {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 4px;
+    font-size: 11px;
+    font-weight: 500;
+}
+.vp-paid { color: var(--green); }
+.vp-remaining { color: var(--red); }
+.vasooli-payment-input-row {
+    display: flex;
+    gap: 6px;
+    padding: 10px 0 4px;
+    margin-top: 8px;
+    border-top: 1px solid var(--glass-border);
+    align-items: center;
+    flex-wrap: wrap;
+    animation: slideDown 0.25s var(--ease-smooth);
+}
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.vasooli-payment-amount {
+    flex: 1;
+    min-width: 90px;
+    padding: 7px 10px;
+    border-radius: var(--radius-sm);
+    border: 1.5px solid var(--input-border);
+    background: var(--input-bg);
+    color: var(--text-primary);
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    outline: none;
+    transition: border-color 0.2s, background 0.2s;
+}
+.vasooli-payment-amount:focus {
+    border-color: var(--accent);
+    background: var(--input-bg-focus);
+}
+.vasooli-payment-confirm {
+    padding: 6px 12px;
+    border-radius: var(--radius-sm);
+    border: none;
+    background: var(--green);
+    color: #fff;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+.vasooli-payment-confirm:hover { transform: scale(1.08); }
+.vasooli-payment-confirm:active { transform: scale(0.95); }
+.vasooli-payment-full {
+    padding: 6px 10px;
+    border-radius: var(--radius-sm);
+    border: 1.5px solid var(--accent);
+    background: var(--accent-bg);
+    color: var(--accent);
+    font-weight: 600;
+    font-size: 11px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all var(--transition-fast);
+}
+.vasooli-payment-full:hover {
+    background: var(--accent);
+    color: #fff;
+}
+.vasooli-payment-cancel {
+    padding: 6px 10px;
+    border-radius: var(--radius-sm);
+    border: none;
+    background: var(--input-bg);
+    color: var(--text-secondary);
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+.vasooli-payment-cancel:hover { background: var(--red-bg); color: var(--red); }
+.vasooli-payment-log {
+    width: 100%;
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px dashed var(--glass-border);
+}
+.vasooli-payment-log-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 0;
+    font-size: 11px;
+    color: var(--text-secondary);
+}
+.vpl-icon { font-size: 12px; }
+.vpl-amount { font-weight: 600; color: var(--green); }
+.vpl-date { margin-left: auto; color: var(--text-tertiary); font-size: 10px; }

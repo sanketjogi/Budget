@@ -1665,7 +1665,7 @@ function renderVasooli() {
 
     const entries = state.vasooli;
     const totalLent = entries.reduce((s, v) => s + v.amount, 0);
-    const totalRecovered = entries.filter(v => v.settled).reduce((s, v) => s + v.amount, 0);
+    const totalRecovered = entries.reduce((s, v) => s + getVasooliPaid(v), 0);
     const stillOwed = totalLent - totalRecovered;
 
     DOM.vasooliTotalLent.textContent = formatCurrency(totalLent);
@@ -1692,8 +1692,8 @@ function renderVasooli() {
 
     // Sort: people who still owe first, then alphabetically
     persons.sort((a, b) => {
-        const aOwed = personMap[a].filter(v => !v.settled).reduce((s, v) => s + v.amount, 0);
-        const bOwed = personMap[b].filter(v => !v.settled).reduce((s, v) => s + v.amount, 0);
+        const aOwed = personMap[a].reduce((s, v) => s + getVasooliRemaining(v), 0);
+        const bOwed = personMap[b].reduce((s, v) => s + getVasooliRemaining(v), 0);
         if (aOwed > 0 && bOwed === 0) return -1;
         if (aOwed === 0 && bOwed > 0) return 1;
         return a.localeCompare(b);
@@ -1701,13 +1701,34 @@ function renderVasooli() {
 
     DOM.vasooliPersons.innerHTML = persons.map(name => {
         const items = personMap[name].sort((a, b) => new Date(b.date) - new Date(a.date));
-        const unsettled = items.filter(v => !v.settled).reduce((s, v) => s + v.amount, 0);
-        const allSettled = unsettled === 0;
+        const totalPersonLent = items.reduce((s, v) => s + v.amount, 0);
+        const totalPersonPaid = items.reduce((s, v) => s + getVasooliPaid(v), 0);
+        const totalPersonRemaining = totalPersonLent - totalPersonPaid;
+        const allSettled = totalPersonRemaining <= 0;
         const initial = name.charAt(0).toUpperCase();
         const count = items.length;
-        const unsettledCount = items.filter(v => !v.settled).length;
+        const paidPct = totalPersonLent > 0 ? Math.round((totalPersonPaid / totalPersonLent) * 100) : 0;
 
-        const entriesHTML = items.map(v => `
+        const entriesHTML = items.map(v => {
+            const paid = getVasooliPaid(v);
+            const remaining = getVasooliRemaining(v);
+            const entryPct = v.amount > 0 ? Math.round((paid / v.amount) * 100) : 0;
+
+            // Payment history log
+            let paymentLog = '';
+            if (v.payments && v.payments.length > 0) {
+                paymentLog = `<div class="vasooli-payment-log">
+                    ${v.payments.map(p => `
+                        <div class="vasooli-payment-log-item">
+                            <span class="vpl-icon">💰</span>
+                            <span class="vpl-amount">₹${p.amount.toLocaleString('en-IN')}</span>
+                            <span class="vpl-date">${formatDate(p.date)}</span>
+                        </div>
+                    `).join('')}
+                </div>`;
+            }
+
+            return `
             <div class="vasooli-entry ${v.settled ? 'settled' : ''}" data-vasooli-id="${v.id}">
                 <div class="vasooli-entry-left">
                     <span class="vasooli-entry-note">${v.note || 'No reason specified'}</span>
@@ -1717,14 +1738,26 @@ function renderVasooli() {
                     <span class="vasooli-entry-amount">${formatCurrency(v.amount)}</span>
                     ${v.settled
                         ? `<span class="vasooli-settled-badge">Settled ✅</span>`
-                        : `<button class="vasooli-settle-btn" data-settle-id="${v.id}">Settle</button>`
+                        : `<button class="vasooli-settle-btn" data-settle-id="${v.id}">Record Payment</button>`
                     }
                     <button class="vasooli-delete-btn" aria-label="Delete entry" title="Delete" data-delete-id="${v.id}">
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
                     </button>
                 </div>
+                ${!v.settled ? `
+                <div class="vasooli-entry-progress">
+                    <div class="vasooli-progress-bar">
+                        <div class="vasooli-progress-fill" style="width: ${entryPct}%"></div>
+                    </div>
+                    <div class="vasooli-progress-labels">
+                        <span class="vp-paid">Paid: ₹${paid.toLocaleString('en-IN')}</span>
+                        <span class="vp-remaining">Left: ₹${remaining.toLocaleString('en-IN')}</span>
+                    </div>
+                </div>` : ''}
+                ${paymentLog}
             </div>
-        `).join('');
+        `;
+        }).join('');
 
         return `
             <div class="vasooli-person-card glass-card" data-person="${name}">
@@ -1733,14 +1766,21 @@ function renderVasooli() {
                         <div class="vasooli-person-avatar">${initial}</div>
                         <div class="vasooli-person-info">
                             <span class="vasooli-person-name">${name}</span>
-                            <span class="vasooli-person-count">${unsettledCount > 0 ? unsettledCount + ' pending' : 'All settled'} · ${count} total</span>
+                            <span class="vasooli-person-count">${allSettled ? 'All settled ✅' : `₹${totalPersonPaid.toLocaleString('en-IN')} paid · ₹${totalPersonRemaining.toLocaleString('en-IN')} left`} · ${count} total</span>
                         </div>
                     </div>
                     <div class="vasooli-person-right">
-                        <span class="vasooli-person-amount ${allSettled ? 'all-settled' : ''}">${allSettled ? '✅' : formatCurrency(unsettled)}</span>
+                        <span class="vasooli-person-amount ${allSettled ? 'all-settled' : ''}">${allSettled ? '✅' : formatCurrency(totalPersonRemaining)}</span>
                         <span class="vasooli-person-chevron">▼</span>
                     </div>
                 </div>
+                ${!allSettled ? `
+                <div class="vasooli-person-progress">
+                    <div class="vasooli-progress-bar person-bar">
+                        <div class="vasooli-progress-fill" style="width: ${paidPct}%"></div>
+                    </div>
+                    <span class="vasooli-progress-pct">${paidPct}% recovered</span>
+                </div>` : ''}
                 <div class="vasooli-entries">${entriesHTML}</div>
             </div>
         `;
@@ -1983,13 +2023,102 @@ function addVasooliEntry() {
     }
 }
 
+function getVasooliPaid(entry) {
+    // Backward compat: old entries with settled:true but no payments array
+    if (entry.settled && (!entry.payments || entry.payments.length === 0)) return entry.amount;
+    if (!entry.payments) return 0;
+    return entry.payments.reduce((s, p) => s + p.amount, 0);
+}
+
+function getVasooliRemaining(entry) {
+    return Math.max(0, entry.amount - getVasooliPaid(entry));
+}
+
+function showPaymentInput(id) {
+    // Toggle: hide if already open
+    const existing = document.getElementById(`payment-input-${id}`);
+    if (existing) { existing.remove(); return; }
+
+    const entry = state.vasooli.find(v => v.id === id);
+    if (!entry || entry.settled) return;
+
+    const remaining = getVasooliRemaining(entry);
+    const entryEl = document.querySelector(`[data-vasooli-id="${id}"]`);
+    if (!entryEl) return;
+
+    const inputRow = document.createElement('div');
+    inputRow.id = `payment-input-${id}`;
+    inputRow.className = 'vasooli-payment-input-row';
+    inputRow.innerHTML = `
+        <input type="number" class="vasooli-payment-amount" placeholder="Amount received" max="${remaining}" min="1" step="1" autofocus>
+        <button class="vasooli-payment-confirm">✓</button>
+        <button class="vasooli-payment-full" title="Settle full remaining">Full ₹${remaining.toLocaleString('en-IN')}</button>
+        <button class="vasooli-payment-cancel">✕</button>
+    `;
+    entryEl.appendChild(inputRow);
+
+    const amtInput = inputRow.querySelector('.vasooli-payment-amount');
+    amtInput.focus();
+
+    // Confirm partial payment
+    inputRow.querySelector('.vasooli-payment-confirm').addEventListener('click', () => {
+        const val = parseFloat(amtInput.value);
+        if (!val || val <= 0) { showToast('Enter a valid amount', '⚠️'); return; }
+        if (val > remaining) { showToast(`Max remaining is ₹${remaining.toLocaleString('en-IN')}`, '⚠️'); return; }
+        recordPartialPayment(id, val);
+    });
+
+    // Settle full remaining
+    inputRow.querySelector('.vasooli-payment-full').addEventListener('click', () => {
+        recordPartialPayment(id, remaining);
+    });
+
+    // Cancel
+    inputRow.querySelector('.vasooli-payment-cancel').addEventListener('click', () => {
+        inputRow.remove();
+    });
+
+    // Enter key
+    amtInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const val = parseFloat(amtInput.value);
+            if (!val || val <= 0) return;
+            if (val > remaining) { showToast(`Max remaining is ₹${remaining.toLocaleString('en-IN')}`, '⚠️'); return; }
+            recordPartialPayment(id, val);
+        }
+    });
+}
+
+function recordPartialPayment(id, amount) {
+    const entry = state.vasooli.find(v => v.id === id);
+    if (!entry) return;
+
+    if (!entry.payments) entry.payments = [];
+    entry.payments.push({
+        amount: amount,
+        date: new Date().toISOString().split('T')[0],
+        timestamp: Date.now()
+    });
+
+    const totalPaid = getVasooliPaid(entry);
+    if (totalPaid >= entry.amount) {
+        entry.settled = true;
+        showToast(`₹${entry.amount.toLocaleString('en-IN')} fully recovered from ${entry.person}! 🎉`, '✅');
+    } else {
+        showToast(`₹${amount.toLocaleString('en-IN')} received from ${entry.person} (₹${getVasooliRemaining(entry).toLocaleString('en-IN')} left)`, '💰');
+    }
+
+    saveData();
+    renderAll();
+}
+
+// Legacy full-settle (kept for backward compat)
 function settleVasooli(id) {
     const entry = state.vasooli.find(v => v.id === id);
     if (!entry || entry.settled) return;
-    entry.settled = true;
-    saveData();
-    renderAll();
-    showToast(`₹${entry.amount.toLocaleString('en-IN')} recovered from ${entry.person}`, '✅');
+    const remaining = getVasooliRemaining(entry);
+    recordPartialPayment(id, remaining);
 }
 
 function deleteVasooli(id) {
@@ -2213,7 +2342,7 @@ function initEventListeners() {
         // Settle button
         const settleBtn = e.target.closest('.vasooli-settle-btn');
         if (settleBtn) {
-            settleVasooli(settleBtn.dataset.settleId);
+            showPaymentInput(settleBtn.dataset.settleId);
             return;
         }
 

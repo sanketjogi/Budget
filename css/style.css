@@ -2356,11 +2356,17 @@ input[type="number"] {
 
 .vasooli-entry {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
+    flex-direction: column;
     padding: 14px 20px 14px 78px;
     border-top: 1px solid var(--glass-border);
     transition: opacity var(--transition-fast);
+}
+
+.vasooli-entry-main {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
 }
 
 .vasooli-entry.settled {

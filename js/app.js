@@ -1730,19 +1730,21 @@ function renderVasooli() {
 
             return `
             <div class="vasooli-entry ${v.settled ? 'settled' : ''}" data-vasooli-id="${v.id}">
-                <div class="vasooli-entry-left">
-                    <span class="vasooli-entry-note">${v.note || 'No reason specified'}</span>
-                    <span class="vasooli-entry-date">${formatDate(v.date)}</span>
-                </div>
-                <div class="vasooli-entry-right">
-                    <span class="vasooli-entry-amount">${formatCurrency(v.amount)}</span>
-                    ${v.settled
-                        ? `<span class="vasooli-settled-badge">Settled ✅</span>`
-                        : `<button class="vasooli-settle-btn" data-settle-id="${v.id}">Record Payment</button>`
-                    }
-                    <button class="vasooli-delete-btn" aria-label="Delete entry" title="Delete" data-delete-id="${v.id}">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
-                    </button>
+                <div class="vasooli-entry-main">
+                    <div class="vasooli-entry-left">
+                        <span class="vasooli-entry-note">${v.note || 'No reason specified'}</span>
+                        <span class="vasooli-entry-date">${formatDate(v.date)}</span>
+                    </div>
+                    <div class="vasooli-entry-right">
+                        <span class="vasooli-entry-amount">${formatCurrency(v.amount)}</span>
+                        ${v.settled
+                            ? `<span class="vasooli-settled-badge">Settled ✅</span>`
+                            : `<button class="vasooli-settle-btn" data-settle-id="${v.id}">Record Payment</button>`
+                        }
+                        <button class="vasooli-delete-btn" aria-label="Delete entry" title="Delete" data-delete-id="${v.id}">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                        </button>
+                    </div>
                 </div>
                 ${!v.settled ? `
                 <div class="vasooli-entry-progress">

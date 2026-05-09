@@ -1249,14 +1249,18 @@ function renderFinanceCalendar() {
     const isCurrentMonth = year === now.getFullYear() && month === now.getMonth();
     const today = isCurrentMonth ? now.getDate() : -1;
 
-    // Get daily totals
+    // Get daily expense totals (for color coding)
     const dailyTotals = {};
+    // Track which days have ANY transactions (for click)
+    const daysWithTxns = new Set();
     state.transactions.forEach(t => {
-        if (t.type !== 'expense') return;
         const d = new Date(t.date + 'T00:00:00');
         if (d.getFullYear() === year && d.getMonth() === month) {
             const day = d.getDate();
-            dailyTotals[day] = (dailyTotals[day] || 0) + t.amount;
+            daysWithTxns.add(day);
+            if (t.type === 'expense') {
+                dailyTotals[day] = (dailyTotals[day] || 0) + t.amount;
+            }
         }
     });
 
@@ -1283,12 +1287,23 @@ function renderFinanceCalendar() {
 
         const isToday = day === today ? ' fc-today' : '';
         const isFuture = day > today ? ' fc-future' : '';
+        const hasData = daysWithTxns.has(day) ? ' fc-has-data' : '';
         const amountLabel = amount > 0 ? `<span class="fc-amount">₹${amount >= 1000 ? (amount / 1000).toFixed(1) + 'k' : amount}</span>` : '';
+        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
-        html += `<div class="fc-cell ${colorClass}${isToday}${isFuture}"><span class="fc-day">${day}</span>${amountLabel}</div>`;
+        html += `<div class="fc-cell ${colorClass}${isToday}${isFuture}${hasData}" data-date="${dateStr}"><span class="fc-day">${day}</span>${amountLabel}</div>`;
     }
 
     container.innerHTML = html;
+
+    // Click handler for calendar cells
+    container.onclick = (e) => {
+        const cell = e.target.closest('.fc-has-data');
+        if (cell) {
+            const dateStr = cell.dataset.date;
+            if (dateStr) openDailyTransactionsModal(dateStr);
+        }
+    };
 
     // Update month total stats
     const monthExpenseTotal = Object.values(dailyTotals).reduce((s, v) => s + v, 0);
@@ -1298,6 +1313,102 @@ function renderFinanceCalendar() {
     if (el) {
         el.innerHTML = `<span>Total: <strong>₹${monthExpenseTotal.toLocaleString('en-IN')}</strong></span><span>Avg/day: <strong>₹${avgDaily.toLocaleString('en-IN')}</strong></span><span>Active days: <strong>${daysWithSpending}</strong></span>`;
     }
+}
+
+// ======================== DAILY TRANSACTIONS MODAL ========================
+function openDailyTransactionsModal(dateStr) {
+    const overlay = document.getElementById('daily-txns-modal-overlay');
+    const titleEl = document.getElementById('daily-txns-title');
+    const summaryEl = document.getElementById('daily-txns-summary');
+    const bodyEl = document.getElementById('daily-txns-body');
+    if (!overlay || !titleEl || !summaryEl || !bodyEl) return;
+
+    // Parse the date for display
+    const dateObj = new Date(dateStr + 'T00:00:00');
+    const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    const dayOfWeek = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    titleEl.textContent = `📅 ${dayOfWeek[dateObj.getDay()]}, ${dateObj.getDate()} ${monthNames[dateObj.getMonth()]}`;
+
+    // Filter ALL transactions for this date
+    const dayTxns = state.transactions.filter(t => t.date === dateStr);
+    const totalExpense = dayTxns.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+    const totalIncome = dayTxns.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+
+    const modalEl = document.getElementById('daily-txns-modal');
+    if (modalEl) {
+        modalEl.classList.remove('dtm-tint-green', 'dtm-tint-yellow', 'dtm-tint-red');
+        if (totalExpense > 500) modalEl.classList.add('dtm-tint-red');
+        else if (totalExpense >= 300) modalEl.classList.add('dtm-tint-yellow');
+        else if (totalExpense > 0) modalEl.classList.add('dtm-tint-green');
+    }
+
+    // Summary cards
+    summaryEl.innerHTML = `
+        <div class="dtm-stat">
+            <div class="dtm-stat-label">Spent</div>
+            <div class="dtm-stat-value expense">${totalExpense > 0 ? '₹' + totalExpense.toLocaleString('en-IN') : '—'}</div>
+        </div>
+        <div class="dtm-stat">
+            <div class="dtm-stat-label">Earned</div>
+            <div class="dtm-stat-value income">${totalIncome > 0 ? '₹' + totalIncome.toLocaleString('en-IN') : '—'}</div>
+        </div>
+        <div class="dtm-stat">
+            <div class="dtm-stat-label">Transactions</div>
+            <div class="dtm-stat-value txns">${dayTxns.length}</div>
+        </div>
+    `;
+
+    // Transaction list
+    if (dayTxns.length === 0) {
+        bodyEl.innerHTML = `<div class="dtm-empty"><span class="dtm-empty-icon">🍃</span>No transactions on this day</div>`;
+    } else {
+        // Sort: expenses first, then income, each by amount descending
+        const sorted = [...dayTxns].sort((a, b) => {
+            if (a.type !== b.type) return a.type === 'expense' ? -1 : 1;
+            return b.amount - a.amount;
+        });
+
+        bodyEl.innerHTML = sorted.map((t, i) => {
+            const cat = getCategoryInfo(t.category);
+            const prefix = t.type === 'income' ? '+' : '−';
+            const noteText = t.note || cat.name;
+            return `
+                <div class="dtm-txn-item" style="animation-delay: ${i * 0.06}s">
+                    <div class="dtm-txn-emoji">${cat.emoji}</div>
+                    <div class="dtm-txn-details">
+                        <div class="dtm-txn-name">${cat.name}</div>
+                        ${t.note ? `<div class="dtm-txn-note">${t.note}</div>` : ''}
+                    </div>
+                    <div class="dtm-txn-amount ${t.type}">${prefix}₹${t.amount.toLocaleString('en-IN')}</div>
+                </div>`;
+        }).join('');
+    }
+
+    // Open modal
+    overlay.classList.add('active');
+
+    // Close handlers
+    const closeBtn = document.getElementById('daily-txns-close');
+    const closeFn = () => closeDailyTransactionsModal();
+
+    closeBtn.onclick = closeFn;
+    overlay.onclick = (e) => {
+        if (e.target === overlay) closeFn();
+    };
+
+    // Escape key
+    const escHandler = (e) => {
+        if (e.key === 'Escape') {
+            closeFn();
+            document.removeEventListener('keydown', escHandler);
+        }
+    };
+    document.addEventListener('keydown', escHandler);
+}
+
+function closeDailyTransactionsModal() {
+    const overlay = document.getElementById('daily-txns-modal-overlay');
+    if (overlay) overlay.classList.remove('active');
 }
 
 function renderCategoryBarChart() {
@@ -1737,10 +1848,7 @@ function renderVasooli() {
                     </div>
                     <div class="vasooli-entry-right">
                         <span class="vasooli-entry-amount">${formatCurrency(v.amount)}</span>
-                        ${v.settled
-                            ? `<span class="vasooli-settled-badge">Settled ✅</span>`
-                            : `<button class="vasooli-settle-btn" data-settle-id="${v.id}">Record Payment</button>`
-                        }
+                        ${v.settled ? `<span class="vasooli-settled-badge">Settled ✅</span>` : ''}
                         <button class="vasooli-delete-btn" aria-label="Delete entry" title="Delete" data-delete-id="${v.id}">
                             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
                         </button>
@@ -1772,6 +1880,7 @@ function renderVasooli() {
                         </div>
                     </div>
                     <div class="vasooli-person-right">
+                        ${!allSettled ? `<button class="vasooli-person-settle-btn" data-person-settle="${name}">Record Payment</button>` : ''}
                         <span class="vasooli-person-amount ${allSettled ? 'all-settled' : ''}">${allSettled ? '✅' : formatCurrency(totalPersonRemaining)}</span>
                         <span class="vasooli-person-chevron">▼</span>
                     </div>
@@ -2036,28 +2145,34 @@ function getVasooliRemaining(entry) {
     return Math.max(0, entry.amount - getVasooliPaid(entry));
 }
 
-function showPaymentInput(id) {
+function showPersonPaymentInput(personName) {
     // Toggle: hide if already open
-    const existing = document.getElementById(`payment-input-${id}`);
+    const safeId = personName.replace(/[^a-zA-Z0-9]/g, '_');
+    const existing = document.getElementById(`payment-input-${safeId}`);
     if (existing) { existing.remove(); return; }
 
-    const entry = state.vasooli.find(v => v.id === id);
-    if (!entry || entry.settled) return;
+    const personEntries = state.vasooli.filter(v => v.person === personName && !v.settled);
+    if (personEntries.length === 0) return;
 
-    const remaining = getVasooliRemaining(entry);
-    const entryEl = document.querySelector(`[data-vasooli-id="${id}"]`);
-    if (!entryEl) return;
+    const totalRemaining = personEntries.reduce((sum, v) => sum + getVasooliRemaining(v), 0);
+    const cardEl = document.querySelector(`[data-person="${personName}"]`);
+    if (!cardEl) return;
 
     const inputRow = document.createElement('div');
-    inputRow.id = `payment-input-${id}`;
-    inputRow.className = 'vasooli-payment-input-row';
+    inputRow.id = `payment-input-${safeId}`;
+    inputRow.className = 'vasooli-payment-input-row person-level-payment';
     inputRow.innerHTML = `
-        <input type="number" class="vasooli-payment-amount" placeholder="Amount received" max="${remaining}" min="1" step="1" autofocus>
-        <button class="vasooli-payment-confirm">✓</button>
-        <button class="vasooli-payment-full" title="Settle full remaining">Full ₹${remaining.toLocaleString('en-IN')}</button>
+        <div style="flex: 1; display: flex; align-items: center; gap: 8px;">
+            <input type="number" class="vasooli-payment-amount" placeholder="Payment received" max="${totalRemaining}" min="1" step="1" autofocus style="width: 100%;">
+        </div>
+        <button class="vasooli-payment-confirm">✓ Confirm</button>
+        <button class="vasooli-payment-full" title="Settle full remaining">Full ₹${totalRemaining.toLocaleString('en-IN')}</button>
         <button class="vasooli-payment-cancel">✕</button>
     `;
-    entryEl.appendChild(inputRow);
+    
+    // Insert just below the header
+    const header = cardEl.querySelector('.vasooli-person-header');
+    header.insertAdjacentElement('afterend', inputRow);
 
     const amtInput = inputRow.querySelector('.vasooli-payment-amount');
     amtInput.focus();
@@ -2086,33 +2201,50 @@ function showPaymentInput(id) {
             e.preventDefault();
             const val = parseFloat(amtInput.value);
             if (!val || val <= 0) return;
-            if (val > remaining) { showToast(`Max remaining is ₹${remaining.toLocaleString('en-IN')}`, '⚠️'); return; }
-            recordPartialPayment(id, val);
+            if (val > totalRemaining) { showToast(`Max remaining is ₹${totalRemaining.toLocaleString('en-IN')}`, '⚠️'); return; }
+            recordPersonPayment(personName, val);
         }
     });
 }
 
-function recordPartialPayment(id, amount) {
-    const entry = state.vasooli.find(v => v.id === id);
-    if (!entry) return;
-
-    if (!entry.payments) entry.payments = [];
-    entry.payments.push({
-        amount: amount,
-        date: new Date().toISOString().split('T')[0],
-        timestamp: Date.now()
-    });
-
-    const totalPaid = getVasooliPaid(entry);
-    if (totalPaid >= entry.amount) {
-        entry.settled = true;
-        showToast(`₹${entry.amount.toLocaleString('en-IN')} fully recovered from ${entry.person}! 🎉`, '✅');
-    } else {
-        showToast(`₹${amount.toLocaleString('en-IN')} received from ${entry.person} (₹${getVasooliRemaining(entry).toLocaleString('en-IN')} left)`, '💰');
+function recordPersonPayment(personName, amountToDistribute) {
+    let remainingToDistribute = amountToDistribute;
+    
+    // Get all unsettled entries for this person, oldest first
+    const unsettledEntries = state.vasooli
+        .filter(v => v.person === personName && !v.settled)
+        .sort((a, b) => a.createdAt - b.createdAt); // oldest first
+        
+    for (const entry of unsettledEntries) {
+        if (remainingToDistribute <= 0) break;
+        
+        const entryRemaining = getVasooliRemaining(entry);
+        if (entryRemaining <= 0) {
+            entry.settled = true;
+            continue;
+        }
+        
+        const amountToApply = Math.min(entryRemaining, remainingToDistribute);
+        
+        if (!entry.payments) entry.payments = [];
+        entry.payments.push({
+            id: generateId(),
+            amount: amountToApply,
+            date: new Date().toISOString().split('T')[0],
+            timestamp: Date.now()
+        });
+        
+        const newRemaining = getVasooliRemaining(entry);
+        if (newRemaining <= 0) {
+            entry.settled = true;
+        }
+        
+        remainingToDistribute -= amountToApply;
     }
 
     saveData();
     renderAll();
+    showToast(`Recorded ₹${amountToDistribute.toLocaleString('en-IN')} payment for ${personName}`, '💰');
 }
 
 // Legacy full-settle (kept for backward compat)
@@ -2341,10 +2473,11 @@ function initEventListeners() {
 
     // Settle buttons + Person card expand (event delegation)
     DOM.vasooliPersons?.addEventListener('click', (e) => {
-        // Settle button
-        const settleBtn = e.target.closest('.vasooli-settle-btn');
+        // Person-level Settle button
+        const settleBtn = e.target.closest('.vasooli-person-settle-btn');
         if (settleBtn) {
-            showPaymentInput(settleBtn.dataset.settleId);
+            e.stopPropagation(); // prevent expanding the card
+            showPersonPaymentInput(settleBtn.dataset.personSettle);
             return;
         }
 

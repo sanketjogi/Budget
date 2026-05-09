@@ -16,7 +16,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css?v=5">
+    <link rel="stylesheet" href="css/style.css?v=9">
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
@@ -536,6 +536,20 @@
                 </button>
                 <button class="btn btn-primary btn-save" id="edit-save-btn">Update</button>
             </div>
+        </div>
+    </div>
+
+    <!-- ======================== DAILY TRANSACTIONS MODAL ======================== -->
+    <div class="modal-overlay" id="daily-txns-modal-overlay">
+        <div class="modal glass-panel daily-txns-modal" id="daily-txns-modal">
+            <div class="modal-header">
+                <h2 id="daily-txns-title">📅 Day Details</h2>
+                <button class="modal-close" id="daily-txns-close" aria-label="Close">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            <div class="daily-txns-summary" id="daily-txns-summary"></div>
+            <div class="modal-body daily-txns-body" id="daily-txns-body"></div>
         </div>
     </div>
 

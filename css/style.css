@@ -2317,9 +2317,9 @@ input[type="number"] {
 .vasooli-person-right {
     text-align: right;
     display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 2px;
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
 }
 
 .vasooli-person-amount {
@@ -2418,7 +2418,7 @@ input[type="number"] {
     text-decoration: line-through;
 }
 
-.vasooli-settle-btn {
+.vasooli-person-settle-btn {
     padding: 6px 14px;
     border: none;
     border-radius: var(--radius-xl);
@@ -2432,7 +2432,7 @@ input[type="number"] {
     white-space: nowrap;
 }
 
-.vasooli-settle-btn:hover {
+.vasooli-person-settle-btn:hover {
     background: var(--green);
     color: #fff;
     transform: translateY(-1px);
@@ -3189,6 +3189,14 @@ input[type="number"] {
     flex-wrap: wrap;
     animation: slideDown 0.25s var(--ease-smooth);
 }
+.vasooli-payment-input-row.person-level-payment {
+    padding: 12px 16px;
+    margin-top: 0;
+    margin-bottom: 8px;
+    background: var(--input-bg);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--glass-border);
+}
 @keyframes slideDown {
     from { opacity: 0; transform: translateY(-8px); }
     to { opacity: 1; transform: translateY(0); }
@@ -3269,3 +3277,201 @@ input[type="number"] {
 .vpl-icon { font-size: 12px; }
 .vpl-amount { font-weight: 600; color: var(--green); }
 .vpl-date { margin-left: auto; color: var(--text-tertiary); font-size: 10px; }
+
+/* ======================== CLICKABLE CALENDAR CELLS ======================== */
+.fc-cell.fc-has-data {
+    cursor: pointer;
+}
+.fc-cell.fc-has-data:hover {
+    transform: scale(1.12);
+    z-index: 3;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+}
+.fc-cell.fc-has-data:active {
+    transform: scale(0.96);
+}
+
+/* ======================== DAILY TRANSACTIONS MODAL ======================== */
+.daily-txns-modal {
+    max-width: 520px;
+    max-height: 85vh;
+}
+
+.daily-txns-summary {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+    padding: 16px 24px 8px;
+}
+
+.dtm-stat {
+    text-align: center;
+    padding: 10px 6px;
+    border-radius: var(--radius-md);
+    background: var(--input-bg);
+    border: 1px solid var(--glass-border);
+}
+.dtm-stat-label {
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--text-tertiary);
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+.dtm-stat-value {
+    font-size: 16px;
+    font-weight: 800;
+    color: var(--text-primary);
+}
+.dtm-stat-value.expense { color: var(--red); }
+.dtm-stat-value.income { color: var(--green); }
+.dtm-stat-value.txns { color: var(--accent); }
+
+.daily-txns-body {
+    padding: 12px 24px 24px !important;
+    max-height: 55vh;
+    overflow-y: auto;
+}
+
+.daily-txns-body::-webkit-scrollbar {
+    width: 4px;
+}
+.daily-txns-body::-webkit-scrollbar-track {
+    background: transparent;
+}
+.daily-txns-body::-webkit-scrollbar-thumb {
+    background: var(--glass-border);
+    border-radius: 4px;
+}
+
+.dtm-txn-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    border-radius: var(--radius-md);
+    background: var(--input-bg);
+    border: 1px solid var(--glass-border);
+    margin-bottom: 8px;
+    transition: all var(--transition-fast);
+    opacity: 0;
+    transform: translateY(12px);
+    animation: dtmSlideIn 0.35s var(--ease-spring) forwards;
+}
+
+.dtm-txn-item:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+@keyframes dtmSlideIn {
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.dtm-txn-emoji {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+}
+
+.dtm-txn-details {
+    flex: 1;
+    min-width: 0;
+}
+
+.dtm-txn-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dtm-txn-note {
+    font-size: 11px;
+    color: var(--text-tertiary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 2px;
+}
+
+.dtm-txn-amount {
+    font-size: 15px;
+    font-weight: 700;
+    flex-shrink: 0;
+    text-align: right;
+}
+.dtm-txn-amount.expense { color: var(--red); }
+.dtm-txn-amount.income { color: var(--green); }
+
+.dtm-empty {
+    text-align: center;
+    padding: 30px 20px;
+    color: var(--text-tertiary);
+    font-size: 14px;
+}
+.dtm-empty-icon {
+    font-size: 36px;
+    margin-bottom: 8px;
+    display: block;
+}
+
+/* Responsive daily txns modal */
+@media (max-width: 768px) {
+    .daily-txns-modal {
+        width: 95%;
+        max-height: 80vh;
+    }
+    .daily-txns-summary {
+        padding: 12px 16px 6px;
+        gap: 8px;
+    }
+    .dtm-stat { padding: 8px 4px; }
+    .dtm-stat-value { font-size: 14px; }
+    .daily-txns-body {
+        padding: 10px 16px 20px !important;
+        max-height: 50vh;
+    }
+    .dtm-txn-emoji {
+        width: 36px;
+        height: 36px;
+        font-size: 18px;
+    }
+    .dtm-txn-name { font-size: 13px; }
+    .dtm-txn-amount { font-size: 14px; }
+}
+
+/* Modal Tints */
+.dtm-tint-green {
+    --panel-bg: rgba(220, 255, 225, 0.85);
+}
+.dtm-tint-yellow {
+    --panel-bg: rgba(255, 245, 215, 0.85);
+}
+.dtm-tint-red {
+    --panel-bg: rgba(255, 230, 230, 0.85);
+}
+@media (prefers-color-scheme: dark) {
+    .dtm-tint-green {
+        --panel-bg: rgba(20, 55, 25, 0.85);
+    }
+    .dtm-tint-yellow {
+        --panel-bg: rgba(55, 45, 10, 0.85);
+    }
+    .dtm-tint-red {
+        --panel-bg: rgba(60, 20, 20, 0.85);
+    }
+}

@@ -3475,3 +3475,220 @@ input[type="number"] {
         --panel-bg: rgba(60, 20, 20, 0.85);
     }
 }
+
+/* ======================== SLOT MACHINE — Mobile Balance Reveal 🎰 ======================== */
+
+/* Hide original balance text when slot machine is active */
+.slot-original-hidden {
+    display: none !important;
+}
+
+/* Only show slot machine UI on mobile */
+.slot-lever-container,
+.slot-display {
+    display: none;
+}
+
+@media (max-width: 768px) {
+
+    /* ── Balance Card Modifications ── */
+    .slot-machine-active {
+        position: relative;
+        overflow: visible !important;
+        min-height: 90px;
+        /* Reserve space on right for lever so digits don't overlap */
+        padding-right: 60px;
+    }
+
+    .slot-machine-active .stat-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    /* ── Slot Display ── */
+    .slot-display {
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        min-height: clamp(36px, 10vw, 52px);
+        transition: opacity 0.5s ease;
+    }
+
+    .slot-display.slot-fading {
+        opacity: 0;
+        transform: scale(0.95);
+        transition: opacity 0.5s ease, transform 0.5s ease;
+    }
+
+    .slot-placeholder {
+        font-size: clamp(22px, 6vw, 34px);
+        font-weight: 800;
+        color: var(--text-tertiary);
+        letter-spacing: 6px;
+    }
+
+    .slot-currency {
+        font-size: clamp(22px, 6vw, 34px);
+        font-weight: 800;
+        color: var(--text-primary);
+        margin-right: 2px;
+        line-height: 1;
+    }
+
+    .slot-reels {
+        display: flex;
+        align-items: center;
+        gap: 1px;
+    }
+
+    .slot-comma {
+        font-size: clamp(22px, 6vw, 34px);
+        font-weight: 800;
+        color: var(--text-primary);
+        margin: 0 2px;
+        line-height: 1;
+    }
+
+    /* ── Individual Reel ── */
+    /* digit-w and digit-h drive everything — change here to resize all */
+    .slot-reel {
+        --digit-w: clamp(18px, 5.2vw, 32px);
+        --digit-h: clamp(34px, 9vw, 48px);
+        width: var(--digit-w);
+        height: var(--digit-h);
+        overflow: hidden;
+        position: relative;
+        border-radius: 5px;
+        background: var(--input-bg);
+        border: 1px solid var(--glass-border);
+    }
+
+    .slot-reel-strip {
+        display: flex;
+        flex-direction: column;
+        transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .slot-reel-strip.spinning {
+        animation: slotSpinReel 0.12s linear infinite;
+        transition: none;
+    }
+
+    .slot-reel-strip.stopping {
+        transition: transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .slot-digit {
+        width: var(--digit-w, 20px);
+        height: var(--digit-h, 38px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: clamp(18px, 5vw, 28px);
+        font-weight: 800;
+        color: var(--text-primary);
+        font-family: 'Inter', monospace;
+        flex-shrink: 0;
+    }
+
+    .slot-digit.slot-final {
+        color: var(--accent);
+    }
+
+    @keyframes slotSpinReel {
+        0%   { transform: translateY(0); }
+        100% { transform: translateY(-600px); } /* large enough for any digit height */
+    }
+
+    /* ── Lever ── */
+    .slot-lever-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        position: absolute;
+        right: 14px;
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 5;
+        gap: 4px;
+    }
+
+    .slot-lever-track {
+        width: 4px;
+        height: 48px;
+        background: linear-gradient(to bottom, var(--text-tertiary) 0%, var(--accent) 100%);
+        border-radius: 4px;
+        opacity: 0.4;
+    }
+
+    .slot-lever-arm {
+        position: absolute;
+        top: -6px;
+        cursor: grab;
+        touch-action: none;
+        z-index: 6;
+        transition: transform 0.1s ease;
+    }
+
+    .slot-lever-arm.dragging {
+        cursor: grabbing;
+    }
+
+    .slot-lever-ball {
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        background: radial-gradient(circle at 35% 35%, #ff6b6b, #e53935);
+        box-shadow: 0 2px 8px rgba(229, 57, 53, 0.4), inset 0 -2px 4px rgba(0,0,0,0.2), inset 0 2px 4px rgba(255,255,255,0.3);
+        transition: box-shadow 0.2s, transform 0.2s;
+    }
+
+    .slot-lever-arm.ready .slot-lever-ball {
+        background: radial-gradient(circle at 35% 35%, #69f0ae, #00c853);
+        box-shadow: 0 2px 12px rgba(0, 200, 83, 0.5), inset 0 -2px 4px rgba(0,0,0,0.2), inset 0 2px 4px rgba(255,255,255,0.3);
+        transform: scale(1.15);
+    }
+
+    .slot-pull-hint {
+        font-size: 9px;
+        font-weight: 700;
+        color: var(--text-tertiary);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        white-space: nowrap;
+        transition: opacity 0.3s ease;
+        margin-top: 2px;
+    }
+
+    /* ── Celebration Sparkles ── */
+    .slot-sparkles {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 0;
+        height: 0;
+        z-index: 10;
+        pointer-events: none;
+    }
+
+    .slot-sparkle {
+        position: absolute;
+        font-size: 16px;
+        animation: sparkleOut 1s cubic-bezier(0.25, 0.46, 0.45, 0.94) var(--delay, 0s) forwards;
+    }
+
+    @keyframes sparkleOut {
+        0% {
+            opacity: 1;
+            transform: rotate(var(--angle)) translateX(0) scale(0.5);
+        }
+        60% {
+            opacity: 1;
+            transform: rotate(var(--angle)) translateX(55px) scale(1.1);
+        }
+        100% {
+            opacity: 0;
+            transform: rotate(var(--angle)) translateX(75px) scale(0);
+        }
+    }
+} /* end mobile slot machine */

@@ -852,7 +852,13 @@ function renderStats() {
     const totals = getAllTimeTotals();
     const monthly = getMonthlyTotals();
 
-    animateValue(DOM.totalBalance, parseCurrencyValue(DOM.totalBalance.textContent), totals.balance, 600, true);
+    // On mobile with slot machine, skip balance text animation (it's hidden)
+    const slotActive = typeof SlotMachine !== 'undefined' && SlotMachine.isActive();
+    if (slotActive) {
+        SlotMachine.updateBalance(totals.balance);
+    } else {
+        animateValue(DOM.totalBalance, parseCurrencyValue(DOM.totalBalance.textContent), totals.balance, 600, true);
+    }
     animateValue(DOM.monthlyIncome, parseCurrencyValue(DOM.monthlyIncome.textContent), monthly.income);
     animateValue(DOM.monthlyExpenses, parseCurrencyValue(DOM.monthlyExpenses.textContent), monthly.expense);
 
@@ -2837,6 +2843,8 @@ function notifyHabitForgeBridge(txn) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Init slot machine FIRST so balance card is ready before renderAll
+    if (typeof SlotMachine !== 'undefined') SlotMachine.init();
     init();
     initCalculator();
 });

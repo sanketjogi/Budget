@@ -2181,13 +2181,13 @@ function showPersonPaymentInput(personName) {
     inputRow.querySelector('.vasooli-payment-confirm').addEventListener('click', () => {
         const val = parseFloat(amtInput.value);
         if (!val || val <= 0) { showToast('Enter a valid amount', '⚠️'); return; }
-        if (val > remaining) { showToast(`Max remaining is ₹${remaining.toLocaleString('en-IN')}`, '⚠️'); return; }
-        recordPartialPayment(id, val);
+        if (val > totalRemaining) { showToast(`Max remaining is ₹${totalRemaining.toLocaleString('en-IN')}`, '⚠️'); return; }
+        recordPersonPayment(personName, val);
     });
 
     // Settle full remaining
     inputRow.querySelector('.vasooli-payment-full').addEventListener('click', () => {
-        recordPartialPayment(id, remaining);
+        recordPersonPayment(personName, totalRemaining);
     });
 
     // Cancel

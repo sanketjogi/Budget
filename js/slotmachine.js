@@ -167,9 +167,7 @@ const SlotMachine = (() => {
         let html = `<span class="slot-currency">${isNeg ? '−' : ''}₹</span><div class="slot-reels">`;
 
         for (const ch of formatted) {
-            if (ch === ',') {
-                html += '<span class="slot-comma">,</span>';
-            } else {
+            if (/\d/.test(ch)) {
                 const d = parseInt(ch);
                 html += `<div class="slot-reel"><div class="slot-reel-strip" data-target="${d}">`;
                 for (let c = 0; c < 3; c++) {
@@ -177,6 +175,8 @@ const SlotMachine = (() => {
                 }
                 html += `<div class="slot-digit slot-final">${d}</div>`;
                 html += '</div></div>';
+            } else {
+                html += '<span class="slot-comma">,</span>';
             }
         }
 

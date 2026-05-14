@@ -3589,6 +3589,8 @@ input[type="number"] {
         color: var(--text-primary);
         font-family: 'Inter', monospace;
         flex-shrink: 0;
+        line-height: 1;
+        padding-top: 1px;
     }
 
     .slot-digit.slot-final {
